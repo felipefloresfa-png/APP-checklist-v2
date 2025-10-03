@@ -755,16 +755,49 @@ const EditItemModal: React.FC<{
     );
 };
 
+const ConfirmationModal: React.FC<{
+    itemName: string;
+    actionText: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+}> = ({ itemName, actionText, onConfirm, onCancel }) => {
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 animate-fade-in">
+            <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-sm m-4 text-center animate-scale-up">
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Confirmar Acción</h2>
+                <p className="text-gray-600 mb-6">
+                    ¿Estás seguro de que quieres marcar <span className="font-semibold text-gray-900">"{itemName}"</span> como {actionText}?
+                </p>
+                <div className="flex justify-center space-x-4">
+                    <button
+                        onClick={onCancel}
+                        className="px-6 py-2 text-base font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        className="px-6 py-2 text-base font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                    >
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 const ItemCompra: React.FC<{
     item: Item;
-    onToggleComplete: (id: string, completed: boolean) => void;
+    onToggleComplete: (id: string, completed: boolean, name: string) => void;
     onEdit: (item: Item) => void;
     onDelete: (id: string) => void;
 }> = ({ item, onToggleComplete, onEdit, onDelete }) => {
     const formatCurrency = (value: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
     const handleToggle = () => {
-        onToggleComplete(item.id, !item.completed);
+        onToggleComplete(item.id, !item.completed, item.name);
     };
 
     const relevancePillStyles: Record<Relevance, string> = {
@@ -960,7 +993,8 @@ const Filters: React.FC<{
   setStatusFilter: (status: 'Pendientes' | 'Completados' | 'Todos') => void;
   relevanceFilters: Set<Relevance>;
   setRelevanceFilters: (filters: Set<Relevance>) => void;
-}> = ({ activeCategory, setActiveCategory, statusFilter, setStatusFilter, relevanceFilters, setRelevanceFilters }) => {
+  categoryCounts: Map<Category | null, number>;
+}> = ({ activeCategory, setActiveCategory, statusFilter, setStatusFilter, relevanceFilters, setRelevanceFilters, categoryCounts }) => {
     
     const handleRelevanceToggle = (relevance: Relevance) => {
         const newFilters = new Set(relevanceFilters);
@@ -987,7 +1021,12 @@ const Filters: React.FC<{
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
             {/* Category Tabs */}
             <div className="flex space-x-1 sm:space-x-2 border-b border-gray-200 overflow-x-auto pb-0 -mx-4 px-4 horizontal-scroll-cards" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                {categoryTabs.map(cat => (
+                {categoryTabs.map(cat => {
+                    const count = categoryCounts.get(cat.id);
+                    const isVisible = cat.id === null || (count !== undefined && count > 0) || CATEGORIES.some(c => c.id === cat.id);
+                    if(!isVisible) return null;
+
+                    return (
                     <button 
                         key={cat.id || 'all'}
                         onClick={() => setActiveCategory(cat.id)}
@@ -995,34 +1034,39 @@ const Filters: React.FC<{
                     >
                         <cat.icon className="h-5 w-5" />
                         <span className="hidden sm:inline">{cat.name}</span>
+                        {count !== undefined && (
+                            <span className={`ml-1.5 text-xs font-mono px-2 py-0.5 rounded-full transition-colors ${activeCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                                {count}
+                            </span>
+                        )}
                     </button>
-                ))}
+                    )
+                })}
             </div>
             <style>{`.horizontal-scroll-cards::-webkit-scrollbar { display: none; }`}</style>
             
             {/* Smart Filters Bar */}
             <div className="mt-4">
-                 <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold text-gray-600 mr-2">Filtros:</span>
-                    {/* Status Filters */}
-                    <button onClick={() => setStatusFilter('Pendientes')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Pendientes' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Pendientes</button>
-                    <button onClick={() => setStatusFilter('Completados')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Completados' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Completados</button>
-                    
-                    <div className="h-4 w-px bg-gray-300 mx-1"></div>
+                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <span className="text-sm font-bold text-gray-600 mr-1">Filtros:</span>
+                     <div className="flex items-center gap-2 flex-wrap">
+                        <button onClick={() => setStatusFilter('Pendientes')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Pendientes' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Pendientes</button>
+                        <button onClick={() => setStatusFilter('Completados')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Completados' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Completados</button>
+                        
+                        <div className="h-4 w-px bg-gray-300 mx-1"></div>
 
-                     {/* Relevance Filters */}
-                    {relevanceFilterConfig.map(rel => (
-                        <button key={rel.id} onClick={() => handleRelevanceToggle(rel.id)} className={`px-3 py-1 text-sm font-semibold rounded-full ${relevanceFilters.has(rel.id) ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>
-                            {rel.label}
-                        </button>
-                    ))}
-                    <button onClick={() => setStatusFilter('Todos')} className={`ml-auto px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Todos' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Ver Todos</button>
+                        {relevanceFilterConfig.map(rel => (
+                            <button key={rel.id} onClick={() => handleRelevanceToggle(rel.id)} className={`px-3 py-1 text-sm font-semibold rounded-full ${relevanceFilters.has(rel.id) ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>
+                                {rel.label}
+                            </button>
+                        ))}
+                    </div>
+                    <button onClick={() => { setStatusFilter('Todos'); setRelevanceFilters(new Set()); }} className={`ml-auto px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Todos' && relevanceFilters.size === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Ver Todos</button>
                  </div>
             </div>
         </div>
     );
 };
-
 
 const App: React.FC = () => {
     const [items, setItems] = useState<Item[]>([]);
@@ -1031,6 +1075,7 @@ const App: React.FC = () => {
     const [totalBudget, setTotalBudget] = useState(5000000); // Default budget
     const [editingItem, setEditingItem] = useState<Item | null>(null);
     const [viewingCategory, setViewingCategory] = useState<Category | null>(null);
+    const [confirmingToggle, setConfirmingToggle] = useState<{ id: string; name: string; completed: boolean } | null>(null);
 
     // Filter states
     const [statusFilter, setStatusFilter] = useState<'Pendientes' | 'Completados' | 'Todos'>('Pendientes');
@@ -1087,6 +1132,14 @@ const App: React.FC = () => {
             console.error("Error updating item: ", error);
         }
     };
+    
+    const handleConfirmToggle = () => {
+        if (confirmingToggle) {
+            handleToggleComplete(confirmingToggle.id, confirmingToggle.completed);
+            setConfirmingToggle(null);
+        }
+    };
+
 
     const handleUpdateBudget = async (newBudget: number) => {
         const budgetDocRef = db.collection('app_config').doc('budget');
@@ -1119,9 +1172,8 @@ const App: React.FC = () => {
         }
     };
 
-
-    const filteredItems = useMemo(() => {
-        return items
+    const preFilteredItems = useMemo(() => {
+       return items
             .filter(item => {
                 if (statusFilter === 'Pendientes') return !item.completed;
                 if (statusFilter === 'Completados') return item.completed;
@@ -1130,12 +1182,25 @@ const App: React.FC = () => {
             .filter(item => {
                 if (relevanceFilters.size === 0) return true;
                 return relevanceFilters.has(item.relevance);
-            })
-            .filter(item => {
+            });
+    }, [items, statusFilter, relevanceFilters]);
+
+    const filteredItems = useMemo(() => {
+        return preFilteredItems.filter(item => {
                 if (!activeCategory) return true;
                 return item.category === activeCategory;
             });
-    }, [items, statusFilter, activeCategory, relevanceFilters]);
+    }, [preFilteredItems, activeCategory]);
+
+    const categoryCounts = useMemo(() => {
+        const counts = new Map<Category | null, number>();
+        counts.set(null, preFilteredItems.length);
+        CATEGORIES.forEach(cat => {
+            const count = preFilteredItems.filter(item => item.category === cat.id).length;
+            counts.set(cat.id, count);
+        });
+        return counts;
+    }, [preFilteredItems]);
     
     return (
         <div className="min-h-screen">
@@ -1161,6 +1226,7 @@ const App: React.FC = () => {
                   statusFilter={statusFilter} setStatusFilter={setStatusFilter}
                   relevanceFilters={relevanceFilters} setRelevanceFilters={setRelevanceFilters}
                   activeCategory={activeCategory} setActiveCategory={setActiveCategory}
+                  categoryCounts={categoryCounts}
                 />
 
                 {loading ? (
@@ -1171,7 +1237,7 @@ const App: React.FC = () => {
                             <ItemCompra 
                                 key={item.id}
                                 item={item}
-                                onToggleComplete={handleToggleComplete}
+                                onToggleComplete={(id, completed, name) => setConfirmingToggle({ id, completed, name })}
                                 onEdit={setEditingItem}
                                 onDelete={handleDeleteItem}
                             />
@@ -1193,6 +1259,26 @@ const App: React.FC = () => {
                     onClose={() => setViewingCategory(null)}
                 />
             )}
+            {confirmingToggle && (
+                <ConfirmationModal
+                    itemName={confirmingToggle.name}
+                    actionText={confirmingToggle.completed ? 'completado' : 'pendiente'}
+                    onConfirm={handleConfirmToggle}
+                    onCancel={() => setConfirmingToggle(null)}
+                />
+            )}
+            <style>{`
+                @keyframes fade-in {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes scale-up {
+                    from { transform: scale(0.95); opacity: 0; }
+                    to { transform: scale(1); opacity: 1; }
+                }
+                .animate-fade-in { animation: fade-in 0.2s ease-out forwards; }
+                .animate-scale-up { animation: scale-up 0.2s ease-out forwards; }
+            `}</style>
         </div>
     );
 };
