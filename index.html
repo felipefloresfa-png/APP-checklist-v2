@@ -5,6 +5,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Amoblando Nuestra Casa</title>
+    <script>
+      // Previene el error "process is not defined" en entornos de navegador puros.
+      // Esto permite que la aplicación se cargue. La API KEY real deberá ser
+      // gestionada de forma segura para que las funciones de IA operen.
+      window.process = window.process || { env: { API_KEY: '' } };
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
