@@ -1,4 +1,8 @@
 {
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "index.tsx", "use": "@vercel/static" }
+  ],
   "headers": [
     {
       "source": "/index.tsx",
