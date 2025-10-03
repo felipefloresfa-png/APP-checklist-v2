@@ -568,7 +568,7 @@ const ProgressBySpace: React.FC<{ items: Item[]; onCategoryClick: (category: Cat
     }, [items]);
 
     return (
-        <section className="my-8">
+        <section className="mt-6 mb-4">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Progreso por Espacio</h2>
             <div className="flex space-x-4 overflow-x-auto pb-4 horizontal-scroll-cards" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {CATEGORIES
@@ -822,6 +822,15 @@ const ItemCompra: React.FC<{
                     <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${relevancePillStyles[item.relevance]}`}>
                         {item.relevance}
                     </span>
+                    {item.completed && item.completedBy && (
+                        <div className="flex items-center space-x-1.5">
+                            <span className="text-gray-400">&bull;</span>
+                            <UserIcon className={`h-3.5 w-3.5 ${item.completedBy === User.VALERIA ? 'text-pink-500' : 'text-indigo-500'}`} />
+                            <span className="text-xs font-medium text-gray-500">
+                                por {item.completedBy}
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -860,7 +869,7 @@ const FormularioAgregarItem: React.FC<{ onAddItem: (item: Omit<Item, 'id' | 'com
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm mb-8 border border-gray-200">
+        <div className="bg-white p-6 rounded-xl shadow-sm mb-6 border border-gray-200">
              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
                 <PlusCircleIcon className="h-6 w-6 mr-2 text-gray-400" />
                 Agregar Item Manualmente
@@ -950,7 +959,7 @@ const SuggestionsSection: React.FC<{ onAddSuggestion: (item: Omit<Item, 'id'|'co
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm mb-8 border border-gray-200">
+        <div className="bg-white p-6 rounded-xl shadow-sm mb-6 border border-gray-200">
             <div className="grid grid-cols-2 gap-4 items-center">
                  <select 
                     value={category} 
@@ -1046,23 +1055,24 @@ const Filters: React.FC<{
             <style>{`.horizontal-scroll-cards::-webkit-scrollbar { display: none; }`}</style>
             
             {/* Smart Filters Bar */}
-            <div className="mt-4">
-                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <span className="text-sm font-bold text-gray-600 mr-1">Filtros:</span>
-                     <div className="flex items-center gap-2 flex-wrap">
+            <div className="mt-4 space-y-3">
+                <div className="flex items-center gap-x-3">
+                    <span className="text-sm font-bold text-gray-600">Filtros:</span>
+                    <div className="flex items-center gap-2">
                         <button onClick={() => setStatusFilter('Pendientes')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Pendientes' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Pendientes</button>
                         <button onClick={() => setStatusFilter('Completados')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Completados' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Completados</button>
-                        
-                        <div className="h-4 w-px bg-gray-300 mx-1"></div>
-
+                    </div>
+                </div>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
                         {relevanceFilterConfig.map(rel => (
                             <button key={rel.id} onClick={() => handleRelevanceToggle(rel.id)} className={`px-3 py-1 text-sm font-semibold rounded-full ${relevanceFilters.has(rel.id) ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>
                                 {rel.label}
                             </button>
                         ))}
                     </div>
-                    <button onClick={() => { setStatusFilter('Todos'); setRelevanceFilters(new Set()); }} className={`ml-auto px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Todos' && relevanceFilters.size === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Ver Todos</button>
-                 </div>
+                    <button onClick={() => { setStatusFilter('Todos'); setRelevanceFilters(new Set()); }} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Todos' && relevanceFilters.size === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Ver Todos</button>
+                </div>
             </div>
         </div>
     );
@@ -1205,29 +1215,35 @@ const App: React.FC = () => {
     return (
         <div className="min-h-screen">
             <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-                 <div className="flex justify-center items-center space-x-3 pt-6 pb-2">
-                    <HouseIcon className="h-8 w-8 text-green-500" />
-                    <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Amoblando Nuestra Casa</h1>
+                 <div className="flex flex-col items-center pt-6 pb-2">
+                    <HouseIcon className="h-7 w-7 text-green-500" />
+                    <h1 className="mt-2 text-2xl font-bold text-gray-800 tracking-tight text-center">Amoblando Nuestra Casa</h1>
                 </div>
                  <div className="flex justify-center mb-6">
                     <UserSwitcher currentUser={currentUser} onUserChange={setCurrentUser} />
                 </div>
                 
-                <div className="bg-white p-6 rounded-xl shadow-sm mt-8 border border-gray-200">
+                <div className="bg-white p-6 rounded-xl shadow-sm my-6 border border-gray-200">
                     <Dashboard items={items} totalBudget={totalBudget} onUpdateBudget={handleUpdateBudget} />
                 </div>
                 
                 <ProgressBySpace items={items} onCategoryClick={setViewingCategory} />
 
-                <FormularioAgregarItem onAddItem={handleAddItem} />
-                <SuggestionsSection onAddSuggestion={handleAddItem} />
+                <div className="mb-6">
+                  <FormularioAgregarItem onAddItem={handleAddItem} />
+                </div>
+                <div className="my-6">
+                  <SuggestionsSection onAddSuggestion={handleAddItem} />
+                </div>
                 
-                <Filters 
-                  statusFilter={statusFilter} setStatusFilter={setStatusFilter}
-                  relevanceFilters={relevanceFilters} setRelevanceFilters={setRelevanceFilters}
-                  activeCategory={activeCategory} setActiveCategory={setActiveCategory}
-                  categoryCounts={categoryCounts}
-                />
+                <div className="my-6">
+                  <Filters 
+                    statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+                    relevanceFilters={relevanceFilters} setRelevanceFilters={setRelevanceFilters}
+                    activeCategory={activeCategory} setActiveCategory={setActiveCategory}
+                    categoryCounts={categoryCounts}
+                  />
+                </div>
 
                 {loading ? (
                     <div className="flex justify-center items-center h-64"><Loader size="h-12 w-12" /></div>
