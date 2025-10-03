@@ -163,6 +163,11 @@ const XIcon: React.FC<{ className?: string }> = ({ className }) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
   </svg>
 );
+const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  </svg>
+);
 
 // =================================================================================
 // --- FROM constants.ts ---
@@ -801,6 +806,8 @@ interface FiltersProps {
   activeFilter: string;
   onFilterChange: (filter: string) => void;
   counts: Record<string, number>;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }
 const FilterButton: React.FC<{
   label: string;
@@ -821,32 +828,62 @@ const FilterButton: React.FC<{
     {label} ({count || 0})
   </button>
 );
-const Filters: React.FC<FiltersProps> = ({ activeFilter, onFilterChange, counts }) => {
+const Filters: React.FC<FiltersProps> = ({ activeFilter, onFilterChange, counts, searchQuery, onSearchChange }) => {
   const staticFilters = ['Todos', 'Pendientes', 'Completados'];
+  const filtersRef = useRef<HTMLDivElement>(null);
+
+  const handleWheel = (event: React.WheelEvent) => {
+    if (filtersRef.current) {
+        if(filtersRef.current.scrollWidth > filtersRef.current.clientWidth) {
+            event.preventDefault();
+            filtersRef.current.scrollLeft += event.deltaY;
+        }
+    }
+  };
+
 
   return (
-    <div className="flex items-center gap-2 pb-4 overflow-x-auto">
-      {staticFilters.map(filter => (
-        <FilterButton
-          key={filter}
-          label={filter}
-          isActive={activeFilter === filter}
-          onClick={() => onFilterChange(filter)}
-          count={counts[filter]}
+    <div className="flex flex-col gap-4 pb-4">
+      <div 
+        ref={filtersRef}
+        onWheel={handleWheel}
+        className="flex items-center gap-2 w-full overflow-x-auto pb-2 md:flex-wrap md:overflow-visible"
+        style={{ scrollbarWidth: 'none', '-ms-overflow-style': 'none' }}
+      >
+        {staticFilters.map(filter => (
+          <FilterButton
+            key={filter}
+            label={filter}
+            isActive={activeFilter === filter}
+            onClick={() => onFilterChange(filter)}
+            count={counts[filter]}
+          />
+        ))}
+        <div className="h-6 w-px bg-slate-200 mx-2 flex-shrink-0"></div>
+        {CATEGORIES.map(cat => (
+          <FilterButton
+            key={cat.id}
+            label={cat.name}
+            isActive={activeFilter === cat.id}
+            onClick={() => onFilterChange(cat.id)}
+            count={counts[cat.id]}
+          >
+            <cat.icon className="w-4 h-4" />
+          </FilterButton>
+        ))}
+      </div>
+      <div className="relative w-full">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+          <SearchIcon className="h-5 w-5 text-slate-400" />
+        </div>
+        <input
+          type="text"
+          placeholder="Buscar item..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full block pl-10 pr-3 py-2 bg-slate-100 border border-transparent rounded-full text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
         />
-      ))}
-      <div className="h-6 w-px bg-slate-200 mx-2"></div>
-      {CATEGORIES.map(cat => (
-        <FilterButton
-          key={cat.id}
-          label={cat.name}
-          isActive={activeFilter === cat.id}
-          onClick={() => onFilterChange(cat.id)}
-          count={counts[cat.id]}
-        >
-          <cat.icon className="w-4 h-4" />
-        </FilterButton>
-      ))}
+      </div>
     </div>
   );
 };
@@ -993,11 +1030,11 @@ const ItemList: React.FC<ItemListProps> = ({ items, onToggle, onDelete, onUpdate
     return (
         <div className="text-center py-12">
             <div className="inline-block bg-slate-100 p-4 rounded-full mb-4">
-                <OtherIcon className="w-10 h-10 text-slate-400" />
+                <SearchIcon className="w-10 h-10 text-slate-400" />
             </div>
-            <h3 className="text-xl font-semibold text-slate-700">No hay items aquí</h3>
+            <h3 className="text-xl font-semibold text-slate-700">No se encontraron items</h3>
             <p className="text-slate-500 mt-2">
-                Agrega un item o cambia el filtro para ver tus productos.
+                Prueba con otra búsqueda o cambia el filtro.
             </p>
         </div>
     );
@@ -1028,6 +1065,8 @@ const App: React.FC = () => {
   const [isSeeding, setIsSeeding] = useState(false);
   const [budget, setBudget] = useState(5000000); // Presupuesto de ejemplo
   const [activeUser, setActiveUser] = useState<User>(User.FELIPE);
+  const [activeFilter, setActiveFilter] = useState<string>('Todos');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const itemsCollectionRef = useMemo(() => collection(db, "items"), []);
 
@@ -1182,14 +1221,25 @@ const App: React.FC = () => {
     return Object.values(statsByCategory);
   }, [items]);
   
-  const [activeFilter, setActiveFilter] = useState<string>('Todos');
-
   const filteredItems = useMemo(() => {
-    if (activeFilter === 'Todos') return items;
-    if (activeFilter === 'Pendientes') return items.filter(item => !item.completed);
-    if (activeFilter === 'Completados') return items.filter(item => item.completed);
-    return items.filter(item => item.category === activeFilter);
-  }, [items, activeFilter]);
+    let itemsToFilter = items;
+
+    if (activeFilter === 'Pendientes') {
+        itemsToFilter = items.filter(item => !item.completed);
+    } else if (activeFilter === 'Completados') {
+        itemsToFilter = items.filter(item => item.completed);
+    } else if (activeFilter !== 'Todos') {
+        itemsToFilter = items.filter(item => item.category === activeFilter);
+    }
+
+    if (searchQuery.trim() !== '') {
+        itemsToFilter = itemsToFilter.filter(item =>
+            item.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }
+
+    return itemsToFilter;
+  }, [items, activeFilter, searchQuery]);
   
   const filterCounts = useMemo(() => {
     const categoryCounts = items.reduce((acc, item) => {
@@ -1229,6 +1279,8 @@ const App: React.FC = () => {
              activeFilter={activeFilter} 
              onFilterChange={setActiveFilter}
              counts={filterCounts}
+             searchQuery={searchQuery}
+             onSearchChange={setSearchQuery}
             />
            {loading ? (
              <div className="flex justify-center items-center py-12">
