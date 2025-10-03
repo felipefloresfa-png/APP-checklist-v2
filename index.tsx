@@ -1,21 +1,9 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { GoogleGenAI, Type } from "@google/genai";
-import { 
-  initializeApp 
-} from "firebase/app";
-import { 
-  getFirestore, 
-  collection, 
-  onSnapshot, 
-  addDoc, 
-  doc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  orderBy,
-  writeBatch
-} from "firebase/firestore";
+// FIX: Switched to Firebase v9 compat libraries to resolve initialization errors.
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 
 // =================================================================================
 // --- FROM types.ts ---
@@ -85,11 +73,6 @@ const BedroomIcon: React.FC<{ className?: string }> = ({ className }) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M17 11V7" />
     </svg>
 );
-const ChevronDownIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-  </svg>
-);
 const DiningIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18M10 3v18" />
@@ -126,9 +109,14 @@ const OtherIcon: React.FC<{ className?: string }> = ({ className }) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
     </svg>
 );
+const PlusCircleIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+    </svg>
+);
 const PlusIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
   </svg>
 );
 const SuggestionsIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -148,6 +136,11 @@ const UserIcon: React.FC<{ className?: string }> = ({ className }) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
   </svg>
 );
+const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  </svg>
+);
 const PencilIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" />
@@ -161,11 +154,6 @@ const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
 const XIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-  </svg>
-);
-const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
   </svg>
 );
 
@@ -272,7 +260,7 @@ const initialItems: Omit<Item, 'id' | 'completed' | 'completedBy'>[] = [
   { name: 'Cortinas Roller duo', category: Category.MAIN_BEDROOM, relevance: Relevance.HIGH, price: 80000 },
   { name: 'Cómoda / Cajonera', category: Category.MAIN_BEDROOM, relevance: Relevance.MEDIUM, price: 120000 },
   // BAÑOS
-  { name: 'Toallas de cuerpo (x4)', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 40000 },
+  { name: 'Toallas de corpo (x4)', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 40000 },
   { name: 'Toallas de mano (x4)', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 20000 },
   { name: 'Set dispensadores (jabon, shampoo, acond.)', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 25000 },
   { name: 'Set de baño (escobilla, basurero)', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 30000 },
@@ -308,8 +296,10 @@ const firebaseConfig = {
   messagingSenderId: "615469691845",
   appId: "1:615469691845:web:27c56ecd5d0a3df3b851ac"
 };
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// FIX: Updated Firebase initialization to use the compat syntax.
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const itemsCollection = db.collection('items');
 
 // Gemini Service
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -370,969 +360,802 @@ const getSuggestions = async (category: Category): Promise<SuggestedItemResponse
   }
 };
 
-
 // =================================================================================
 // --- UI COMPONENTS ---
 // =================================================================================
+const selectArrowStyle = {
+  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236B7281' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+  backgroundPosition: 'right 0.75rem center',
+  backgroundRepeat: 'no-repeat',
+  backgroundSize: '1.25em 1.25em',
+};
+
 const Loader: React.FC<{ size?: string }> = ({ size = 'h-5 w-5' }) => {
   return (
-    <svg
-      className={`animate-spin text-current ${size}`}
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      ></circle>
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-      ></path>
-    </svg>
-  );
-};
-
-const Header: React.FC = () => {
-  return (
-    <header className="flex items-center gap-3 mb-6">
-      <HouseIcon className="w-8 h-8 text-green-600" />
-      <h1 className="text-3xl font-bold text-slate-800">
-        Amoblando Nuestra Casa
-      </h1>
-    </header>
-  );
-};
-
-interface UserSwitcherProps {
-  activeUser: User;
-  onUserChange: (user: User) => void;
-}
-const UserSwitcher: React.FC<UserSwitcherProps> = ({ activeUser, onUserChange }) => {
-  return (
-    <div className="flex w-full max-w-sm mx-auto p-1 bg-slate-200 rounded-full my-6">
-      <button
-        onClick={() => onUserChange(User.FELIPE)}
-        className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-full font-semibold transition-all duration-300 ${
-          activeUser === User.FELIPE
-            ? 'bg-indigo-600 text-white shadow'
-            : 'bg-transparent text-slate-600 hover:bg-slate-200'
-        }`}
+    <div role="status" className="flex justify-center items-center">
+      <svg
+        aria-hidden="true"
+        className={`animate-spin text-indigo-300 fill-indigo-600 ${size}`}
+        viewBox="0 0 100 101"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
       >
-        <UserIcon className="w-5 h-5" /> {User.FELIPE}
-      </button>
-      <button
-        onClick={() => onUserChange(User.VALERIA)}
-        className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-full font-semibold transition-all duration-300 ${
-          activeUser === User.VALERIA
-            ? 'bg-red-500 text-white shadow'
-            : 'bg-transparent text-slate-600 hover:bg-slate-200'
-        }`}
-      >
-        <UserIcon className="w-5 h-5" /> {User.VALERIA}
-      </button>
+        <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
+        <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0492C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5424 39.6781 93.9676 39.0409Z" fill="currentFill"/>
+      </svg>
+      <span className="sr-only">Cargando...</span>
     </div>
   );
 };
 
-interface StatCardProps {
-  bgColor?: string;
-  children: React.ReactNode;
-}
-const StatCard: React.FC<StatCardProps> = ({ bgColor = 'bg-slate-100', children }) => {
+const UserSwitcher: React.FC<{ currentUser: User; onUserChange: (user: User) => void; }> = ({ currentUser, onUserChange }) => {
   return (
-    <div className={`p-4 rounded-xl ${bgColor}`}>
-      {children}
+    <div className="flex items-center space-x-1 bg-gray-200 p-1 rounded-full shadow-inner">
+      {Object.values(User).map((user) => {
+        const isActive = currentUser === user;
+        const activeClass = user === User.FELIPE
+          ? 'bg-indigo-600 text-white'
+          : 'bg-pink-500 text-white';
+
+        return (
+          <button
+            key={user}
+            onClick={() => onUserChange(user)}
+            className={`flex items-center justify-center space-x-2 px-6 py-2 text-sm font-semibold rounded-full transition-all duration-300 focus:outline-none ${
+              isActive ? `${activeClass} shadow-md` : 'text-gray-600 hover:bg-gray-300/50'
+            }`}
+          >
+            <UserIcon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-gray-500'}`} />
+            <span>{user}</span>
+          </button>
+        );
+      })}
     </div>
   );
 };
 
-interface DashboardStats {
-  progress: { completed: number; total: number };
-  budget: { total: number; spent: number; remaining: number };
-  relevance: { high: number; medium: number; low: number };
-}
-interface DashboardProps {
-  stats: DashboardStats;
-}
-const Dashboard: React.FC<DashboardProps> = ({ stats }) => {
-    const formatCurrency = (amount: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(amount);
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <StatCard bgColor="bg-blue-50">
-        <h3 className="text-sm font-medium text-blue-800">Progreso General</h3>
-        <p className="text-3xl font-bold text-blue-900 mt-1">{stats.progress.completed} / {stats.progress.total}</p>
-        <div className="w-full bg-blue-200 rounded-full h-2 mt-2">
-          <div 
-            className="bg-blue-600 h-2 rounded-full" 
-            style={{width: `${stats.progress.total > 0 ? (stats.progress.completed / stats.progress.total) * 100 : 0}%`}}
-          ></div>
-        </div>
-      </StatCard>
-      <StatCard bgColor="bg-green-50">
-        <h3 className="text-sm font-medium text-green-800">Presupuesto</h3>
-        <p className="text-2xl font-bold text-green-900 mt-1">{formatCurrency(stats.budget.spent)} / {formatCurrency(stats.budget.total)}</p>
-        <p className="text-sm text-green-600 mt-1">Resta: {formatCurrency(stats.budget.remaining)}</p>
-      </StatCard>
-      <StatCard bgColor="bg-yellow-50">
-        <h3 className="text-sm font-medium text-yellow-800">Relevancia</h3>
-        <div className="flex justify-around items-center mt-2">
-            <div className="text-center">
-                <p className="text-2xl font-bold text-yellow-900">{stats.relevance.high}</p>
-                <p className="text-xs text-red-500 font-medium">Alta</p>
+const Dashboard: React.FC<{ items: Item[]; totalBudget: number; onUpdateBudget: (newBudget: number) => void; }> = ({ items, totalBudget, onUpdateBudget }) => {
+    const [isEditingBudget, setIsEditingBudget] = useState(false);
+    const [editedBudget, setEditedBudget] = useState('');
+
+    useEffect(() => {
+        setEditedBudget(new Intl.NumberFormat('es-CL').format(totalBudget));
+    }, [totalBudget]);
+
+    const totalItems = items.length;
+    const completedItems = items.filter(item => item.completed).length;
+    const progress = totalItems > 0 ? (completedItems / totalItems) : 0;
+    const completedCost = items.filter(item => item.completed).reduce((sum, item) => sum + item.price, 0);
+
+    const relevanceStats = useMemo(() => {
+        const initialStats: Record<Relevance, { total: number, completed: number }> = {
+            [Relevance.HIGH]: { total: 0, completed: 0 },
+            [Relevance.MEDIUM]: { total: 0, completed: 0 },
+            [Relevance.LOW]: { total: 0, completed: 0 },
+        };
+        return items.reduce((acc, item) => {
+            if (acc[item.relevance]) {
+                acc[item.relevance].total++;
+                if (item.completed) {
+                    acc[item.relevance].completed++;
+                }
+            }
+            return acc;
+        }, initialStats);
+    }, [items]);
+
+    const formatCurrency = (value: number) => {
+      return new Intl.NumberFormat('es-CL', { style: 'decimal', currency: 'CLP' }).format(value);
+    };
+
+    const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.replace(/\D/g, '');
+        setEditedBudget(value === '' ? '' : new Intl.NumberFormat('es-CL').format(Number(value)));
+    };
+
+    const handleSaveBudget = () => {
+        const newBudget = parseInt(editedBudget.replace(/\./g, ''), 10);
+        if (!isNaN(newBudget) && newBudget !== totalBudget) {
+            onUpdateBudget(newBudget);
+        }
+        setIsEditingBudget(false);
+    };
+
+    const handleCancelBudget = () => {
+        setEditedBudget(new Intl.NumberFormat('es-CL').format(totalBudget));
+        setIsEditingBudget(false);
+    };
+
+    return (
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* Progreso General */}
+            <div className="bg-[#EFF6FF] p-5 rounded-xl shadow-sm">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Progreso General</h3>
+                <div className="flex items-baseline space-x-2">
+                    <span className="text-4xl font-bold text-gray-800">{completedItems}</span>
+                    <span className="text-2xl font-medium text-gray-400">/ {totalItems}</span>
+                </div>
+                <div className="mt-4 bg-gray-200 rounded-full h-2.5">
+                    <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${progress * 100}%` }}></div>
+                </div>
             </div>
-            <div className="text-center">
-                <p className="text-2xl font-bold text-yellow-900">{stats.relevance.medium}</p>
-                <p className="text-xs text-yellow-600 font-medium">Media</p>
+
+            {/* Presupuesto */}
+            <div className="bg-[#F0FDF4] p-5 rounded-xl shadow-sm">
+                <div className="flex justify-between items-start">
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">Presupuesto</h3>
+                    {!isEditingBudget && (
+                        <button onClick={() => setIsEditingBudget(true)} className="text-gray-400 hover:text-indigo-600 p-1 rounded-full hover:bg-green-100/50 -mt-1 -mr-1" aria-label="Editar presupuesto">
+                            <PencilIcon className="h-4 w-4" />
+                        </button>
+                    )}
+                </div>
+                {isEditingBudget ? (
+                     <div>
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                            <input
+                                type="text"
+                                value={editedBudget}
+                                onChange={handleBudgetChange}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveBudget();
+                                    if (e.key === 'Escape') handleCancelBudget();
+                                }}
+                                className="w-full pl-7 pr-2 py-1 text-2xl font-bold text-green-800 bg-green-50/50 border border-green-200 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                autoFocus
+                            />
+                        </div>
+                        <div className="flex items-center justify-end mt-2 space-x-1">
+                           <button onClick={handleSaveBudget} className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-100" aria-label="Guardar">
+                               <CheckIcon className="h-5 w-5" />
+                           </button>
+                           <button onClick={handleCancelBudget} className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-200" aria-label="Cancelar">
+                               <XIcon className="h-5 w-5" />
+                           </button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <p className="text-2xl font-bold text-green-800">${formatCurrency(completedCost)} / ${formatCurrency(totalBudget)}</p>
+                        <p className="text-sm font-medium text-gray-600 mt-2">Resta: ${formatCurrency(totalBudget - completedCost)}</p>
+                    </>
+                )}
             </div>
-            <div className="text-center">
-                <p className="text-2xl font-bold text-yellow-900">{stats.relevance.low}</p>
-                <p className="text-xs text-blue-500 font-medium">Baja</p>
+
+            {/* Relevancia */}
+            <div className="bg-[#FEFCE8] p-5 rounded-xl shadow-sm">
+                <h3 className="text-sm font-medium text-gray-500 mb-4">Relevancia</h3>
+                <div className="flex justify-around items-center text-center">
+                    <div>
+                        <p className="text-3xl font-bold text-red-500">
+                           {relevanceStats[Relevance.HIGH].completed}<span className="text-2xl font-normal text-gray-400">/{relevanceStats[Relevance.HIGH].total}</span>
+                        </p>
+                        <p className="text-xs font-semibold text-red-500">Alta</p>
+                    </div>
+                    <div>
+                        <p className="text-3xl font-bold text-yellow-500">
+                            {relevanceStats[Relevance.MEDIUM].completed}<span className="text-2xl font-normal text-gray-400">/{relevanceStats[Relevance.MEDIUM].total}</span>
+                        </p>
+                        <p className="text-xs font-semibold text-yellow-500">Media</p>
+                    </div>
+                    <div>
+                        <p className="text-3xl font-bold text-blue-500">
+                             {relevanceStats[Relevance.LOW].completed}<span className="text-2xl font-normal text-gray-400">/{relevanceStats[Relevance.LOW].total}</span>
+                        </p>
+                        <p className="text-xs font-semibold text-blue-500">Baja</p>
+                    </div>
+                </div>
             </div>
-        </div>
-      </StatCard>
-    </div>
-  );
+        </section>
+    );
 };
 
-interface CategoryProgressData {
-    name: string;
-    icon: React.FC<{ className?: string }>;
-    completed: number;
-    total: number;
-    felipe: number;
-    valeria: number;
-}
-interface CategoryProgressProps {
-    stats: CategoryProgressData[];
-}
-const CategoryProgress: React.FC<CategoryProgressProps> = ({ stats }) => {
+const ProgressBySpace: React.FC<{ items: Item[]; currentUser: User }> = ({ items, currentUser }) => {
+    const statsByCategory = useMemo(() => {
+        const result: Record<Category, { total: number, completed: number, felipe: number, valeria: number }> = {} as any;
+
+        for (const category of Object.values(Category)) {
+            const itemsInCategory = items.filter(item => item.category === category);
+            // Only include categories that have items
+            if (itemsInCategory.length > 0) {
+                result[category] = {
+                    total: itemsInCategory.length,
+                    completed: itemsInCategory.filter(i => i.completed).length,
+                    felipe: itemsInCategory.filter(i => i.completed && i.completedBy === User.FELIPE).length,
+                    valeria: itemsInCategory.filter(i => i.completed && i.completedBy === User.VALERIA).length
+                };
+            }
+        }
+        return result;
+    }, [items]);
+    
+    const globalCounts = useMemo(() => {
+        return {
+            felipe: items.filter(i => i.completed && i.completedBy === User.FELIPE).length,
+            valeria: items.filter(i => i.completed && i.completedBy === User.VALERIA).length
+        };
+    }, [items]);
+
+    const progressBarColor = 'bg-blue-500';
+
     return (
         <div>
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Progreso por Espacio</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                {stats.map(stat => {
-                    const percentage = stat.total > 0 ? (stat.completed / stat.total) * 100 : 0;
-                    const Icon = stat.icon;
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Progreso por Espacio</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                {CATEGORIES.filter(cat => statsByCategory[cat.id]).map(category => {
+                    const stats = statsByCategory[category.id];
+                    const progress = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
                     return (
-                        <div key={stat.name}>
+                        <div key={category.id}>
                             <div className="flex justify-between items-center mb-1">
-                                <div className="flex items-center gap-2">
-                                    <Icon className="w-5 h-5 text-slate-500" />
-                                    <span className="text-sm font-medium text-slate-700">{stat.name}</span>
+                                <div className="flex items-center space-x-2">
+                                    <category.icon className="h-5 w-5 text-gray-500" />
+                                    <span className="font-semibold text-gray-700">{category.name}</span>
                                 </div>
-                                <span className="text-sm font-medium text-slate-500">{stat.completed} / {stat.total}</span>
+                                <span className="text-sm font-mono text-gray-500">
+                                    {stats.completed}/{stats.total}
+                                </span>
                             </div>
-                            <div className="w-full bg-slate-200 rounded-full h-2">
+                            <div className="h-1.5 w-full bg-gray-200 rounded-full">
                                 <div
-                                    className="bg-indigo-500 h-2 rounded-full transition-all duration-500"
-                                    style={{ width: `${percentage}%` }}
+                                    className={`h-1.5 rounded-full ${progressBarColor}`}
+                                    style={{ width: `${progress}%` }}
                                 ></div>
                             </div>
-                            <div className="flex justify-between items-center text-xs mt-1.5 text-slate-500 px-1">
-                                <div className="flex items-center gap-1.5">
-                                    <UserIcon className="w-3 h-3 text-indigo-500" />
-                                    <span>Felipe: <strong>{stat.felipe}</strong></span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <UserIcon className="w-3 h-3 text-red-500" />
-                                    <span>Valeria: <strong>{stat.valeria}</strong></span>
-                                </div>
+                            <div className="flex justify-between text-xs text-gray-500 mt-2">
+                                <span><UserIcon className="h-3 w-3 inline mr-1" /> Felipe: {stats.felipe}</span>
+                                <span className="text-pink-600 font-medium"><UserIcon className="h-3 w-3 inline mr-1" /> Valeria: {stats.valeria}</span>
                             </div>
                         </div>
                     );
                 })}
             </div>
+            
+            <div className="mt-6 pt-5 border-t border-gray-200">
+                <h3 className="text-base font-bold text-gray-700 mb-3 text-center">Total Completado por Persona</h3>
+                <div className="flex justify-around items-center bg-gray-50 p-3 rounded-xl shadow-inner">
+                    <div className="text-center">
+                        <p className="flex items-center justify-center text-gray-600 text-sm font-semibold">
+                            <UserIcon className="h-4 w-4 mr-1.5" />
+                            <span>Felipe</span>
+                        </p>
+                        <p className="text-3xl font-bold text-gray-800">{globalCounts.felipe}</p>
+                    </div>
+                    <div className="h-12 w-px bg-gray-200"></div>
+                    <div className="text-center">
+                         <p className="flex items-center justify-center text-pink-600 text-sm font-semibold">
+                            <UserIcon className="h-4 w-4 mr-1.5" />
+                            <span>Valeria</span>
+                        </p>
+                        <p className="text-3xl font-bold text-pink-600">{globalCounts.valeria}</p>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
 
 
-interface CategorySelectorProps {
-  selectedCategory: Category | null;
-  onCategoryChange: (category: Category) => void;
-}
-const CategorySelector: React.FC<CategorySelectorProps> = ({ selectedCategory, onCategoryChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+const ItemCompra: React.FC<{
+    item: Item;
+    onToggleComplete: (id: string, completed: boolean) => void;
+    onDelete: (id: string) => void;
+    currentUser: User;
+    onUpdatePrice: (id: string, price: number) => void;
+}> = ({ item, onToggleComplete, onDelete, currentUser, onUpdatePrice }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedPrice, setEditedPrice] = useState('');
 
-  const selectedOption = CATEGORIES.find(c => c.id === selectedCategory);
-  const IconComponent = selectedOption?.icon;
+    useEffect(() => {
+        setEditedPrice(new Intl.NumberFormat('es-CL').format(item.price));
+    }, [item.price]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+    const relevanceStyle = RELEVANCE_STYLES[item.relevance];
+    const formatCurrency = (value: number) => new Intl.NumberFormat('es-CL').format(value);
+
+    const handleToggle = () => {
+        if (isEditing) return;
+        onToggleComplete(item.id, !item.completed);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+
+    const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.replace(/\D/g, '');
+        setEditedPrice(value === '' ? '' : new Intl.NumberFormat('es-CL').format(Number(value)));
     };
-  }, []);
 
-  const handleSelect = (category: Category) => {
-    onCategoryChange(category);
-    setIsOpen(false);
-  };
+    const handleSave = () => {
+        const newPrice = parseInt(editedPrice.replace(/\./g, ''), 10);
+        if (!isNaN(newPrice) && newPrice !== item.price) {
+            onUpdatePrice(item.id, newPrice);
+        }
+        setIsEditing(false);
+    };
 
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between text-left px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900"
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-      >
-        <span className="flex items-center gap-3">
-          {IconComponent && <IconComponent className="w-5 h-5 text-slate-500" />}
-          {selectedOption?.name || 'Seleccionar...'}
-        </span>
-        <ChevronDownIcon className={`w-5 h-5 text-slate-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
-      {isOpen && (
-        <ul
-          className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm"
-          tabIndex={-1}
-          role="listbox"
-          aria-activedescendant={selectedCategory || undefined}
-        >
-          {CATEGORIES.map(cat => (
-            <li
-              key={cat.id}
-              onClick={() => handleSelect(cat.id)}
-              className="text-slate-900 cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-slate-100"
-              role="option"
-              aria-selected={cat.id === selectedCategory}
+    const handleCancel = () => {
+        setEditedPrice(new Intl.NumberFormat('es-CL').format(item.price));
+        setIsEditing(false);
+    };
+
+    return (
+        <li className={`flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-200 transition-all duration-200 ${item.completed ? 'opacity-60' : ''}`}>
+            <button
+                onClick={handleToggle}
+                disabled={isEditing}
+                className={`flex-shrink-0 h-6 w-6 rounded-md mr-4 flex items-center justify-center border-2 ${item.completed ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300'} transition-colors cursor-pointer disabled:cursor-not-allowed`}
+                aria-label={item.completed ? `Marcar "${item.name}" como pendiente` : `Marcar "${item.name}" como completado`}
             >
-              <div className="flex items-center gap-3">
-                <cat.icon className="w-5 h-5 text-slate-500" />
-                <span className={`font-normal block truncate ${cat.id === selectedCategory ? 'font-semibold' : ''}`}>
-                  {cat.name}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+                {item.completed && <CheckIcon className="h-4 w-4 text-white" />}
+            </button>
+            <div className={`flex-grow ${item.completed && !isEditing ? 'line-through text-gray-500' : ''}`}>
+                <p className="font-bold text-gray-800">{item.name}</p>
+                <div className="flex items-center space-x-3 text-sm mt-1">
+                    <span className={`inline-flex items-center ${relevanceStyle.bg} ${relevanceStyle.text} px-2.5 py-0.5 rounded-full text-xs font-bold`}>
+                        <span className={`h-1.5 w-1.5 mr-1.5 rounded-full ${relevanceStyle.dot}`}></span>
+                        {item.relevance}
+                    </span>
+
+                    {isEditing ? (
+                         <div className="relative flex items-center">
+                            <span className="absolute left-2 text-gray-400">$</span>
+                            <input
+                                type="text"
+                                value={editedPrice}
+                                onChange={handlePriceChange}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSave();
+                                    if (e.key === 'Escape') handleCancel();
+                                }}
+                                className="w-28 pl-5 pr-2 py-0.5 text-sm font-medium text-gray-800 bg-gray-50 border border-gray-200 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                autoFocus
+                            />
+                        </div>
+                    ) : (
+                        <span className="text-gray-600 font-medium">${formatCurrency(item.price)}</span>
+                    )}
+
+                    {item.completed && item.completedBy && (
+                        <span className="text-green-700 font-medium flex items-center text-xs"><UserIcon className="h-3 w-3 mr-1"/>{item.completedBy}</span>
+                    )}
+                </div>
+            </div>
+            <div className="flex items-center ml-4 space-x-1">
+                {isEditing ? (
+                    <>
+                        <button onClick={handleSave} className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-100" aria-label="Guardar">
+                            <CheckIcon className="h-5 w-5" />
+                        </button>
+                        <button onClick={handleCancel} className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-200" aria-label="Cancelar">
+                            <XIcon className="h-5 w-5" />
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <button onClick={() => setIsEditing(true)} disabled={item.completed} className="text-gray-400 hover:text-indigo-600 p-2 rounded-full hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Editar item">
+                            <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button onClick={() => onDelete(item.id)} className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-100" aria-label="Eliminar item">
+                            <TrashIcon className="h-5 w-5" />
+                        </button>
+                    </>
+                )}
+            </div>
+        </li>
+    );
 };
 
-interface AddItemFormProps {
-  onAddItem: (item: Omit<Item, 'id' | 'completed' | 'completedBy'>) => void;
-}
-const AddItemForm: React.FC<AddItemFormProps> = ({ onAddItem }) => {
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState<Category | null>(null);
-  const [relevance, setRelevance] = useState<Relevance>(Relevance.MEDIUM);
-  const [price, setPrice] = useState('');
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (name.trim() && price.trim() && category) {
-      onAddItem({
-        name: name.trim(),
-        category,
-        relevance,
-        price: Number(price),
-      });
-      setName('');
-      setPrice('');
-      setCategory(null);
-      setRelevance(Relevance.MEDIUM);
-    }
-  };
+const FormularioAgregarItem: React.FC<{ onAddItem: (item: Omit<Item, 'id' | 'completed' | 'completedBy'>) => void; }> = ({ onAddItem }) => {
+    const [name, setName] = useState('');
+    const [price, setPrice] = useState('');
+    const [category, setCategory] = useState<Category | ''>('');
+    const [relevance, setRelevance] = useState<Relevance>(Relevance.MEDIUM);
 
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    const numericValue = rawValue.replace(/[^\d]/g, '');
-    setPrice(numericValue);
-  };
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (name && price && category) {
+            onAddItem({ name, price: parseInt(price.replace(/\./g, ''), 10), category, relevance });
+            setName('');
+            setPrice('');
+            setCategory('');
+            setRelevance(Relevance.MEDIUM);
+        }
+    };
 
-  const formattedPrice = price ? new Intl.NumberFormat('es-CL').format(Number(price)) : '';
-  const isFormValid = name.trim() !== '' && price.trim() !== '' && category !== null;
-
-  return (
-    <div>
-      <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-700 mb-4">
-        <PlusIcon className="w-5 h-5" />
-        Agregar Item Manualmente
-      </h2>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="md:col-span-2">
-          <label htmlFor="item-name" className="block text-sm font-medium text-slate-600 mb-1">Nombre del Item *</label>
-          <input
-            id="item-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ej: 2 sillas, 1 mesa de centro..."
-            className="w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 placeholder:text-slate-400"
-            required
-          />
+    return (
+        <div className="bg-white p-6 rounded-xl shadow-sm mb-8 border border-gray-200">
+             <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <PlusCircleIcon className="h-6 w-6 mr-2 text-gray-400" />
+                Agregar Item Manualmente
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label htmlFor="itemName" className="block text-sm font-medium text-gray-700">Nombre del Item *</label>
+                    <input
+                        id="itemName"
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Ej: 2 sillas, 1 mesa de centro..."
+                        className="mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 placeholder-gray-400"
+                        required
+                    />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="itemCategory" className="block text-sm font-medium text-gray-700">Espacio / Categoría *</label>
+                        <select id="itemCategory" value={category} onChange={(e) => setCategory(e.target.value as Category)} required 
+                          className="appearance-none mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800"
+                          style={selectArrowStyle}
+                        >
+                            <option value="" disabled className="text-gray-500">Seleccionar...</option>
+                            {CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                        </select>
+                    </div>
+                     <div>
+                        <label htmlFor="itemRelevance" className="block text-sm font-medium text-gray-700">Relevancia</label>
+                        <select id="itemRelevance" value={relevance} onChange={(e) => setRelevance(e.target.value as Relevance)} 
+                          className="appearance-none mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800"
+                          style={selectArrowStyle}
+                        >
+                            {Object.values(Relevance).map(rel => <option key={rel} value={rel}>{rel}</option>)}
+                        </select>
+                    </div>
+                </div>
+                <div>
+                     <label htmlFor="itemPrice" className="block text-sm font-medium text-gray-700">Precio (CLP) *</label>
+                    <div className="relative mt-1">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                            <span className="text-gray-400 sm:text-sm">$</span>
+                        </div>
+                        <input
+                            id="itemPrice"
+                            type="text"
+                            value={price}
+                            onChange={(e) => {
+                                const value = e.target.value.replace(/\D/g, '');
+                                if (value === '') {
+                                    setPrice('');
+                                } else {
+                                    setPrice(new Intl.NumberFormat('es-CL').format(Number(value)));
+                                }
+                            }}
+                            placeholder="80.000"
+                            className="w-full pl-7 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 placeholder-gray-400"
+                            required
+                        />
+                    </div>
+                </div>
+                <button type="submit" className="w-full px-4 py-3 text-base font-semibold text-gray-600 bg-violet-200 rounded-lg hover:bg-violet-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transition-colors">Agregar</button>
+            </form>
         </div>
-        <div>
-          <label htmlFor="item-category" className="block text-sm font-medium text-slate-600 mb-1">Espacio / Categoría *</label>
-          <CategorySelector selectedCategory={category} onCategoryChange={setCategory} />
-        </div>
-        <div>
-          <label htmlFor="item-relevance" className="block text-sm font-medium text-slate-600 mb-1">Relevancia</label>
-          <select 
-            id="item-relevance"
-            value={relevance}
-            onChange={(e) => setRelevance(e.target.value as Relevance)}
-            className="w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900"
-            >
-            <option value={Relevance.HIGH}>♦ Alta</option>
-            <option value={Relevance.MEDIUM}>♦ Media</option>
-            <option value={Relevance.LOW}>♦ Baja</option>
-          </select>
-        </div>
-         <div className='md:col-span-2'>
-           <label htmlFor="item-price" className="block text-sm font-medium text-slate-600 mb-1">Precio (CLP) *</label>
-           <div className="relative">
-             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-               <span className="text-gray-500 sm:text-sm">$</span>
-             </div>
-             <input
-              id="item-price"
-              type="text"
-              inputMode="numeric"
-              value={formattedPrice}
-              onChange={handlePriceChange}
-              placeholder="80.000"
-              className="w-full pl-7 pr-3 py-2 bg-slate-100 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 placeholder:text-slate-400"
-              required
-            />
-           </div>
-        </div>
-        <div className="md:col-span-2">
-          <button
-            type="submit"
-            disabled={!isFormValid}
-            className="w-full py-3 bg-violet-400 text-white font-semibold rounded-lg shadow-md hover:bg-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 transition duration-200 disabled:bg-violet-300 disabled:cursor-not-allowed"
-          >
-            Agregar
-          </button>
-        </div>
-      </form>
-    </div>
-  );
+    );
 };
 
-
-interface SuggestionsSectionProps {
-    onAddSuggested: (item: SuggestedItem) => void;
-}
-const SuggestionsSection: React.FC<SuggestionsSectionProps> = ({ onAddSuggested }) => {
-    const [isLoading, setIsLoading] = useState(false);
+const SuggestionsSection: React.FC<{ onAddSuggestion: (item: Omit<Item, 'id'|'completed'|'completedBy'>) => void }> = ({ onAddSuggestion }) => {
+    const [category, setCategory] = useState<Category>(Category.LIVING);
     const [suggestions, setSuggestions] = useState<SuggestedItemResponse[]>([]);
-    const [selectedCategory, setSelectedCategory] = useState<Category>(Category.LIVING);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleGetSuggestions = useCallback(async () => {
-        setIsLoading(true);
+    const handleGetSuggestions = async () => {
+        setLoading(true);
         setError(null);
         setSuggestions([]);
         try {
-            const result = await getSuggestions(selectedCategory);
+            const result = await getSuggestions(category);
             setSuggestions(result);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Ocurrió un error desconocido.');
+        } catch (e) {
+            setError("Error al obtener sugerencias.");
         } finally {
-            setIsLoading(false);
+            setLoading(false);
         }
-    }, [selectedCategory]);
-
-    const formattedPrice = (price: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(price);
+    };
 
     return (
-        <div>
-            <div className="flex flex-col sm:flex-row gap-3">
+        <div className="bg-white p-6 rounded-xl shadow-sm mb-8 border border-gray-200">
+            <div className="grid grid-cols-2 gap-4 items-center">
                  <select 
-                    value={selectedCategory} 
-                    onChange={(e) => setSelectedCategory(e.target.value as Category)}
-                    className="w-full sm:w-auto px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900"
-                    disabled={isLoading}
-                >
+                    value={category} 
+                    onChange={(e) => setCategory(e.target.value as Category)} 
+                    className="appearance-none w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800"
+                    style={selectArrowStyle}
+                 >
                     {CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{`Sugerencias para ${cat.name}`}</option>)}
                 </select>
-                <button
-                    onClick={handleGetSuggestions}
-                    disabled={isLoading}
-                    className="flex-grow flex items-center justify-center gap-2 w-full px-5 py-3 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition duration-200 disabled:bg-amber-300"
-                >
-                    {isLoading ? <Loader /> : <SuggestionsIcon className="w-5 h-5" />}
-                    <span>Sugerencias de Items</span>
+                <button onClick={handleGetSuggestions} disabled={loading} className="px-4 py-2 font-semibold text-white bg-orange-400 rounded-lg hover:bg-orange-500 disabled:bg-orange-200 flex items-center justify-center space-x-2 transition-colors">
+                    <SuggestionsIcon className="h-5 w-5" />
+                    <span>{loading ? "Generando..." : "Sugerencias de Items"}</span>
                 </button>
             </div>
-            
-            {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
-
+            {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+            {loading && <div className="mt-4"><Loader /></div>}
             {suggestions.length > 0 && (
-                <div className="mt-6 space-y-3">
-                    <h3 className="font-semibold text-slate-600">Sugerencias para {selectedCategory}:</h3>
-                    {suggestions.map((item, index) => (
-                        <div key={index} className="flex items-center justify-between bg-slate-50 p-3 rounded-lg">
+                <ul className="space-y-2 mt-4">
+                    {suggestions.map((sug, index) => (
+                        <li key={index} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border">
                             <div>
-                                <p className="font-medium text-slate-800">{item.name}</p>
-                                <p className="text-sm text-slate-500">{item.relevance} - {formattedPrice(item.price)}</p>
+                                <p className="font-semibold text-gray-700">{sug.name}</p>
+                                <p className="text-sm text-gray-500">{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(sug.price)} - {sug.relevance}</p>
                             </div>
-                            <button 
-                                onClick={() => onAddSuggested({ ...item, category: selectedCategory })}
-                                className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-semibold p-2 rounded-lg hover:bg-indigo-100 transition-colors"
-                                aria-label={`Agregar ${item.name}`}
-                            >
-                                <PlusIcon className="w-4 h-4"/>
-                                Agregar
+                            <button onClick={() => onAddSuggestion({...sug, category})} className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full" aria-label={`Agregar ${sug.name}`}>
+                                <PlusIcon className="h-5 w-5" />
                             </button>
-                        </div>
+                        </li>
                     ))}
-                </div>
+                </ul>
             )}
         </div>
     );
 };
 
-interface FiltersProps {
-  activeFilter: string;
-  onFilterChange: (filter: string) => void;
-  counts: Record<string, number>;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
-}
-const FilterButton: React.FC<{
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
-  count: number;
-  children?: React.ReactNode;
-}> = ({ label, isActive, onClick, count, children }) => (
-  <button
-    onClick={onClick}
-    className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-200 ${
-      isActive
-        ? 'bg-indigo-600 text-white'
-        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-    }`}
-  >
-    {children}
-    {label} ({count || 0})
-  </button>
-);
-const Filters: React.FC<FiltersProps> = ({ activeFilter, onFilterChange, counts, searchQuery, onSearchChange }) => {
-  const staticFilters = ['Todos', 'Pendientes', 'Completados'];
-  const filtersRef = useRef<HTMLDivElement>(null);
-
-  const handleWheel = (event: React.WheelEvent) => {
-    if (filtersRef.current) {
-        if(filtersRef.current.scrollWidth > filtersRef.current.clientWidth) {
-            event.preventDefault();
-            filtersRef.current.scrollLeft += event.deltaY;
-        }
-    }
-  };
-
-
-  return (
-    <div className="flex flex-col gap-4 pb-4">
-      <div 
-        ref={filtersRef}
-        onWheel={handleWheel}
-        className="flex items-center gap-2 w-full overflow-x-auto pb-2 md:flex-wrap md:overflow-visible"
-        style={{ scrollbarWidth: 'none', '-ms-overflow-style': 'none' }}
-      >
-        {staticFilters.map(filter => (
-          <FilterButton
-            key={filter}
-            label={filter}
-            isActive={activeFilter === filter}
-            onClick={() => onFilterChange(filter)}
-            count={counts[filter]}
-          />
-        ))}
-        <div className="h-6 w-px bg-slate-200 mx-2 flex-shrink-0"></div>
-        {CATEGORIES.map(cat => (
-          <FilterButton
-            key={cat.id}
-            label={cat.name}
-            isActive={activeFilter === cat.id}
-            onClick={() => onFilterChange(cat.id)}
-            count={counts[cat.id]}
-          >
-            <cat.icon className="w-4 h-4" />
-          </FilterButton>
-        ))}
-      </div>
-      <div className="relative w-full">
-        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-          <SearchIcon className="h-5 w-5 text-slate-400" />
-        </div>
-        <input
-          type="text"
-          placeholder="Buscar item..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full block pl-10 pr-3 py-2 bg-slate-100 border border-transparent rounded-full text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        />
-      </div>
-    </div>
-  );
-};
-
-
-interface ItemProps {
-  item: Item;
-  onToggle: (id: string) => void;
-  onDelete: (id: string) => void;
-  onUpdatePrice: (id: string, newPrice: number) => void;
-}
-const ItemComponent: React.FC<ItemProps> = ({ item, onToggle, onDelete, onUpdatePrice }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [newPrice, setNewPrice] = useState(item.price.toString());
-
-  const categoryInfo = CATEGORIES.find(c => c.id === item.category);
-  const relevanceInfo = RELEVANCE_STYLES[item.relevance];
-  const formattedPrice = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(item.price);
-  
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    const numericValue = rawValue.replace(/[^\d]/g, '');
-    setNewPrice(numericValue);
-  };
-  
-  const formattedNewPrice = newPrice ? new Intl.NumberFormat('es-CL').format(Number(newPrice)) : '';
-
-  const handleSave = () => {
-    const priceNumber = Number(newPrice);
-    if (!isNaN(priceNumber) && priceNumber >= 0) {
-        onUpdatePrice(item.id, priceNumber);
-        setIsEditing(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    setNewPrice(item.price.toString());
-  };
-
-  return (
-    <div className={`flex items-center justify-between bg-slate-50 p-3 rounded-lg transition-all duration-300 ${item.completed ? 'opacity-60' : ''}`}>
-      <div className="flex items-center gap-4 flex-grow">
-        <input
-          type="checkbox"
-          checked={item.completed}
-          onChange={() => onToggle(item.id)}
-          className="h-6 w-6 rounded-md border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-        />
-        <div className="flex-grow">
-          <p className={`font-medium ${item.completed ? 'line-through text-slate-500' : 'text-slate-800'}`}>
-            {item.name}
-          </p>
-          <div className="flex items-center gap-4 text-sm text-slate-500 mt-1 flex-wrap">
-            <div className="flex items-center gap-1">
-                {categoryInfo && <categoryInfo.icon className="w-4 h-4" />}
-                <span>{item.category}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${relevanceInfo.dot}`}></span>
-                <span>{item.relevance}</span>
-            </div>
-            {item.completed && item.completedBy && (
-                <div className="flex items-center gap-1.5">
-                    <CheckIcon className={`w-4 h-4 ${item.completedBy === User.FELIPE ? 'text-indigo-500' : 'text-red-500'}`} />
-                    <span>{item.completedBy}</span>
-                </div>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center gap-2 md:gap-4">
-        {isEditing ? (
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <span className="text-slate-500 sm:text-sm">$</span>
-            </div>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={formattedNewPrice}
-              onChange={handlePriceChange}
-              className="w-28 pl-7 pr-2 py-1 bg-white border border-slate-300 rounded-md focus:ring-1 focus:ring-indigo-500 focus:outline-none text-slate-900"
-              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-              autoFocus
-            />
-          </div>
-        ) : (
-          <p className={`font-semibold text-slate-700 w-28 text-right ${item.completed ? 'line-through' : ''}`}>{formattedPrice}</p>
-        )}
-        <div className="flex items-center">
-            {isEditing ? (
-            <>
-                <button
-                onClick={handleSave}
-                className="text-slate-400 hover:text-green-500 transition-colors duration-200 p-1 rounded-full"
-                aria-label={`Guardar precio de ${item.name}`}
-                >
-                <CheckIcon className="w-5 h-5" />
-                </button>
-                <button
-                onClick={handleCancel}
-                className="text-slate-400 hover:text-red-500 transition-colors duration-200 p-1 rounded-full"
-                aria-label={`Cancelar edición de ${item.name}`}
-                >
-                <XIcon className="w-5 h-5" />
-                </button>
-            </>
-            ) : (
-            <>
-                <button
-                onClick={() => {
-                    setIsEditing(true);
-                    setNewPrice(item.price.toString());
-                }}
-                className="text-slate-400 hover:text-indigo-500 transition-colors duration-200 p-1 rounded-full"
-                aria-label={`Editar ${item.name}`}
-                >
-                <PencilIcon className="w-5 h-5" />
-                </button>
-                <button
-                onClick={() => onDelete(item.id)}
-                className="text-slate-400 hover:text-red-500 transition-colors duration-200 p-1 rounded-full"
-                aria-label={`Eliminar ${item.name}`}
-                >
-                <TrashIcon className="w-5 h-5" />
-                </button>
-            </>
-            )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-interface ItemListProps {
+const Filters: React.FC<{
   items: Item[];
-  onToggle: (id: string) => void;
-  onDelete: (id: string) => void;
-  onUpdatePrice: (id: string, newPrice: number) => void;
-}
-const ItemList: React.FC<ItemListProps> = ({ items, onToggle, onDelete, onUpdatePrice }) => {
-  if (items.length === 0) {
+  statusFilter: string;
+  setStatusFilter: (status: string) => void;
+  relevanceFilters: Set<Relevance>;
+  setRelevanceFilters: (filters: Set<Relevance>) => void;
+  categoryFilters: Set<Category>;
+  setCategoryFilters: (filters: Set<Category>) => void;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+}> = ({ items, statusFilter, setStatusFilter, relevanceFilters, setRelevanceFilters, categoryFilters, setCategoryFilters, searchTerm, setSearchTerm }) => {
+    
+    const counts = useMemo(() => {
+        return {
+            todos: items.length,
+            pendientes: items.filter(i => !i.completed).length,
+            completados: items.filter(i => i.completed).length,
+            byCategory: CATEGORIES.reduce((acc, cat) => {
+                acc[cat.id] = items.filter(i => i.category === cat.id).length;
+                return acc;
+            }, {} as Record<Category, number>),
+            byRelevance: {
+                [Relevance.HIGH]: items.filter(i => i.relevance === Relevance.HIGH).length,
+                [Relevance.MEDIUM]: items.filter(i => i.relevance === Relevance.MEDIUM).length,
+                [Relevance.LOW]: items.filter(i => i.relevance === Relevance.LOW).length,
+            }
+        };
+    }, [items]);
+
+    const handleCategoryToggle = (category: Category) => {
+        const newFilters = new Set(categoryFilters);
+        if (newFilters.has(category)) {
+            newFilters.delete(category);
+        } else {
+            newFilters.add(category);
+        }
+        setCategoryFilters(newFilters);
+    };
+    
+    const handleRelevanceToggle = (relevance: Relevance) => {
+        const newFilters = new Set(relevanceFilters);
+        if (newFilters.has(relevance)) {
+            newFilters.delete(relevance);
+        } else {
+            newFilters.add(relevance);
+        }
+        setRelevanceFilters(newFilters);
+    };
+    
+    const relevanceFilterConfig = [
+      { id: Relevance.HIGH, label: 'Alta', activeClass: 'bg-red-500 text-white' },
+      { id: Relevance.MEDIUM, label: 'Media', activeClass: 'bg-yellow-500 text-white' },
+      { id: Relevance.LOW, label: 'Baja', activeClass: 'bg-blue-500 text-white' }
+    ];
+
     return (
-        <div className="text-center py-12">
-            <div className="inline-block bg-slate-100 p-4 rounded-full mb-4">
-                <SearchIcon className="w-10 h-10 text-slate-400" />
+        <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-200">
+            <div className="flex flex-wrap gap-2 items-center">
+                {/* Status Filters */}
+                <button onClick={() => setStatusFilter('Todos')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Todos' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Todos ({counts.todos})</button>
+                <button onClick={() => setStatusFilter('Pendientes')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Pendientes' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Pendientes ({counts.pendientes})</button>
+                <button onClick={() => setStatusFilter('Completados')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Completados' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Completados ({counts.completados})</button>
+                
+                <div className="h-6 w-px bg-gray-300 mx-2"></div>
+
+                {/* Relevance Filters */}
+                {relevanceFilterConfig.map(rel => (
+                     <button key={rel.id} onClick={() => handleRelevanceToggle(rel.id)} className={`flex items-center space-x-1.5 px-3 py-1 text-sm font-semibold rounded-full ${relevanceFilters.has(rel.id) ? rel.activeClass : 'bg-gray-200 text-gray-700'}`}>
+                        <span className={`h-2 w-2 rounded-full ${RELEVANCE_STYLES[rel.id].dot}`}></span>
+                        <span>{rel.label} ({counts.byRelevance[rel.id]})</span>
+                    </button>
+                ))}
+
+                <div className="h-6 w-px bg-gray-300 mx-2"></div>
+
+                {/* Category Filters */}
+                {CATEGORIES.filter(c => counts.byCategory[c.id] > 0).map(cat => (
+                    <button key={cat.id} onClick={() => handleCategoryToggle(cat.id)} className={`flex items-center space-x-1.5 px-3 py-1 text-sm font-semibold rounded-full ${categoryFilters.has(cat.id) ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                        <cat.icon className="h-4 w-4" />
+                        <span>{cat.name} ({counts.byCategory[cat.id]})</span>
+                    </button>
+                ))}
             </div>
-            <h3 className="text-xl font-semibold text-slate-700">No se encontraron items</h3>
-            <p className="text-slate-500 mt-2">
-                Prueba con otra búsqueda o cambia el filtro.
-            </p>
+            <div className="relative mt-4">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <SearchIcon className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                    type="text"
+                    placeholder="Buscar item..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 placeholder-gray-400"
+                />
+            </div>
         </div>
     );
-  }
-
-  return (
-    <div className="mt-6 space-y-3">
-      {items.map((item) => (
-        <ItemComponent
-          key={item.id}
-          item={item}
-          onToggle={onToggle}
-          onDelete={onDelete}
-          onUpdatePrice={onUpdatePrice}
-        />
-      ))}
-    </div>
-  );
 };
 
 
-// =================================================================================
-// --- MAIN APP COMPONENT ---
-// =================================================================================
 const App: React.FC = () => {
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isSeeding, setIsSeeding] = useState(false);
-  const [budget, setBudget] = useState(5000000); // Presupuesto de ejemplo
-  const [activeUser, setActiveUser] = useState<User>(User.FELIPE);
-  const [activeFilter, setActiveFilter] = useState<string>('Todos');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const itemsCollectionRef = useMemo(() => collection(db, "items"), []);
-
-  useEffect(() => {
-    setLoading(true);
-    const q = query(itemsCollectionRef, orderBy("name", "asc"));
+    const [items, setItems] = useState<Item[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [currentUser, setCurrentUser] = useState<User>(User.FELIPE);
+    const [totalBudget, setTotalBudget] = useState(5000000); // Default budget
     
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const itemsData = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...(doc.data() as Omit<Item, 'id'>),
-        }));
-        
-        const typedItems: Item[] = itemsData.map(item => ({
-            ...item,
-            category: item.category as Category,
-            relevance: item.relevance as Relevance,
-            completedBy: item.completedBy || null,
-        }));
+    // Filter states
+    const [statusFilter, setStatusFilter] = useState('Todos'); // 'Todos', 'Pendientes', 'Completados'
+    const [relevanceFilters, setRelevanceFilters] = useState<Set<Relevance>>(new Set());
+    const [categoryFilters, setCategoryFilters] = useState<Set<Category>>(new Set());
+    const [searchTerm, setSearchTerm] = useState('');
 
-        setItems(typedItems);
+
+    useEffect(() => {
+      const q = itemsCollection.orderBy('name');
+      const unsubscribe = q.onSnapshot((querySnapshot) => {
+        const itemsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
+        setItems(itemsData);
         setLoading(false);
-    }, (error) => {
-        console.error("Error al obtener items de Firestore: ", error);
-        setLoading(false);
-    });
 
-    return () => unsubscribe();
-  }, [itemsCollectionRef]);
-
-  const handleAddItem = useCallback(async (newItem: Omit<Item, 'id' | 'completed' | 'completedBy'>) => {
-    try {
-      await addDoc(itemsCollectionRef, { ...newItem, completed: false, completedBy: null });
-    } catch (error) {
-        console.error("Error al agregar documento: ", error);
-    }
-  }, [itemsCollectionRef]);
-
-  const handleAddSuggestedItem = useCallback((suggestedItem: SuggestedItem) => {
-    handleAddItem({
-      name: suggestedItem.name,
-      category: suggestedItem.category,
-      relevance: suggestedItem.relevance,
-      price: suggestedItem.price
-    });
-  }, [handleAddItem]);
-  
-  const handleToggleItem = useCallback(async (id: string) => {
-    const itemToToggle = items.find(item => item.id === id);
-    if (!itemToToggle) {
-        console.error("Item no encontrado para cambiar estado");
-        return;
-    }
-    const itemDoc = doc(db, "items", id);
-    try {
-        const isNowCompleted = !itemToToggle.completed;
-        await updateDoc(itemDoc, { 
-            completed: isNowCompleted,
-            completedBy: isNowCompleted ? activeUser : null 
-        });
-    } catch(error) {
-        console.error("Error al actualizar documento: ", error);
-    }
-  }, [items, activeUser]);
-
-  const handleDeleteItem = useCallback(async (id: string) => {
-    const itemDoc = doc(db, "items", id);
-    try {
-        await deleteDoc(itemDoc);
-    } catch(error) {
-        console.error("Error al eliminar documento: ", error);
-    }
-  }, []);
-
-  const handleUpdateItemPrice = useCallback(async (id: string, newPrice: number) => {
-    const itemDoc = doc(db, "items", id);
-    try {
-        await updateDoc(itemDoc, { price: newPrice });
-    } catch(error) {
-        console.error("Error al actualizar precio del documento: ", error);
-    }
-  }, []);
-
-  const handleSeedData = useCallback(async () => {
-    if (items.length > 0) {
-      console.warn("La base de datos no está vacía. Carga de datos iniciales abortada.");
-      return;
-    }
-    setIsSeeding(true);
-    try {
-      const batch = writeBatch(db);
-      const itemsCollection = collection(db, "items");
-      initialItems.forEach((item) => {
-        const docRef = doc(itemsCollection); 
-        batch.set(docRef, { ...item, completed: false, completedBy: null });
-      });
-      await batch.commit();
-    } catch (error) {
-      console.error("Error al cargar datos iniciales: ", error);
-    } finally {
-      setIsSeeding(false);
-    }
-  }, [items.length]);
-
-  const stats = useMemo(() => {
-    const totalItems = items.length;
-    const completedItems = items.filter(item => item.completed).length;
-    const spent = items.filter(item => item.completed).reduce((sum, item) => sum + item.price, 0);
-    const relevanceCounts = items.reduce((acc, item) => {
-        acc[item.relevance] = (acc[item.relevance] || 0) + 1;
-        return acc;
-    }, {} as Record<Relevance, number>);
-
-    return {
-      progress: { completed: completedItems, total: totalItems },
-      budget: { total: budget, spent: spent, remaining: budget - spent },
-      relevance: {
-        high: relevanceCounts[Relevance.HIGH] || 0,
-        medium: relevanceCounts[Relevance.MEDIUM] || 0,
-        low: relevanceCounts[Relevance.LOW] || 0,
-      }
-    };
-  }, [items, budget]);
-  
-  const categoryProgressStats = useMemo(() => {
-    const statsByCategory = CATEGORIES.reduce((acc, category) => {
-        acc[category.id] = {
-            completed: 0,
-            total: 0,
-            name: category.name,
-            icon: category.icon,
-            felipe: 0,
-            valeria: 0,
-        };
-        return acc;
-    }, {} as Record<Category, { completed: number; total: number; name: string; icon: React.FC<{className?: string}>; felipe: number; valeria: number; }>);
-
-    items.forEach(item => {
-        if (statsByCategory[item.category]) {
-            statsByCategory[item.category].total += 1;
-            if (item.completed) {
-                statsByCategory[item.category].completed += 1;
-                if (item.completedBy === User.FELIPE) {
-                    statsByCategory[item.category].felipe += 1;
-                } else if (item.completedBy === User.VALERIA) {
-                    statsByCategory[item.category].valeria += 1;
-                }
-            }
+        if (itemsData.length === 0) {
+            const batch = db.batch();
+            initialItems.forEach(item => {
+                const docRef = db.collection('items').doc();
+                batch.set(docRef, { ...item, completed: false, completedBy: null });
+            });
+            batch.commit();
         }
-    });
+      });
+      return () => unsubscribe();
+    }, []);
 
-    return Object.values(statsByCategory);
-  }, [items]);
-  
-  const filteredItems = useMemo(() => {
-    let itemsToFilter = items;
+    useEffect(() => {
+        const budgetDocRef = db.collection('app_config').doc('budget');
+        const unsubscribe = budgetDocRef.onSnapshot((doc) => {
+            if (doc.exists) {
+                setTotalBudget(doc.data()?.total || 5000000);
+            } else {
+                budgetDocRef.set({ total: 5000000 });
+            }
+        });
+        return () => unsubscribe();
+    }, []);
 
-    if (activeFilter === 'Pendientes') {
-        itemsToFilter = items.filter(item => !item.completed);
-    } else if (activeFilter === 'Completados') {
-        itemsToFilter = items.filter(item => item.completed);
-    } else if (activeFilter !== 'Todos') {
-        itemsToFilter = items.filter(item => item.category === activeFilter);
-    }
-
-    if (searchQuery.trim() !== '') {
-        itemsToFilter = itemsToFilter.filter(item =>
-            item.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-    }
-
-    return itemsToFilter;
-  }, [items, activeFilter, searchQuery]);
-  
-  const filterCounts = useMemo(() => {
-    const categoryCounts = items.reduce((acc, item) => {
-        acc[item.category] = (acc[item.category] || 0) + 1;
-        return acc;
-    }, {} as Record<Category, number>);
-
-    return {
-        'Todos': items.length,
-        'Pendientes': items.filter(item => !item.completed).length,
-        'Completados': items.filter(item => item.completed).length,
-        ...categoryCounts
+    const handleAddItem = async (item: Omit<Item, 'id' | 'completed' | 'completedBy'>) => {
+        try {
+            await itemsCollection.add({ ...item, completed: false, completedBy: null });
+        } catch (error) {
+            console.error("Error adding item: ", error);
+        }
     };
-  }, [items]);
+    
+    const handleToggleComplete = async (id: string, completed: boolean) => {
+        const itemRef = db.collection('items').doc(id);
+        try {
+            await itemRef.update({
+                completed: completed,
+                completedBy: completed ? currentUser : null
+            });
+        } catch (error) {
+            console.error("Error updating item: ", error);
+        }
+    };
 
+    const handleDeleteItem = async (id: string) => {
+        const itemRef = db.collection('items').doc(id);
+        try {
+            await itemRef.delete();
+        } catch (error) {
+            console.error("Error deleting item: ", error);
+        }
+    };
 
-  return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8">
-      <div className="max-w-4xl mx-auto">
-        <Header />
-        <UserSwitcher activeUser={activeUser} onUserChange={setActiveUser} />
-        
-        <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 my-6">
-          <Dashboard stats={stats} />
-          <hr className="my-6 border-slate-200" />
-          <CategoryProgress stats={categoryProgressStats} />
-        </div>
+    const handleUpdatePrice = async (id: string, price: number) => {
+        const itemRef = db.collection('items').doc(id);
+        try {
+            await itemRef.update({ price });
+        } catch (error) {
+            console.error("Error updating item price: ", error);
+        }
+    };
 
-        <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 my-6">
-          <AddItemForm onAddItem={handleAddItem} />
-          <hr className="my-6 border-slate-200" />
-          <SuggestionsSection onAddSuggested={handleAddSuggestedItem}/>
-        </div>
-        
-        <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 my-6">
-           <Filters 
-             activeFilter={activeFilter} 
-             onFilterChange={setActiveFilter}
-             counts={filterCounts}
-             searchQuery={searchQuery}
-             onSearchChange={setSearchQuery}
-            />
-           {loading ? (
-             <div className="flex justify-center items-center py-12">
-               <Loader size="h-10 w-10 text-indigo-500" />
-             </div>
-           ) : items.length === 0 ? (
-             <div className="text-center py-12">
-                <div className="inline-block bg-slate-100 p-4 rounded-full mb-4">
-                    <OtherIcon className="w-10 h-10 text-slate-400" />
+    const handleUpdateBudget = async (newBudget: number) => {
+        const budgetDocRef = db.collection('app_config').doc('budget');
+        try {
+            await budgetDocRef.set({ total: newBudget });
+        } catch (error) {
+            console.error("Error updating budget: ", error);
+        }
+    };
+
+    const filteredItems = useMemo(() => {
+        return items
+            .filter(item => {
+                if (statusFilter === 'Pendientes') return !item.completed;
+                if (statusFilter === 'Completados') return item.completed;
+                return true;
+            })
+            .filter(item => {
+                if (relevanceFilters.size === 0) return true;
+                return relevanceFilters.has(item.relevance);
+            })
+            .filter(item => {
+                if (categoryFilters.size === 0) return true;
+                return categoryFilters.has(item.category);
+            })
+            .filter(item => {
+                return item.name.toLowerCase().includes(searchTerm.toLowerCase());
+            });
+    }, [items, statusFilter, categoryFilters, searchTerm, relevanceFilters]);
+    
+    return (
+        <div className="min-h-screen">
+            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+                 <div className="flex justify-center items-center space-x-3 pt-6 pb-2">
+                    <HouseIcon className="h-8 w-8 text-green-500" />
+                    <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Amoblando Nuestra Casa</h1>
                 </div>
-                <h3 className="text-xl font-semibold text-slate-700">Tu lista está vacía</h3>
-                <p className="text-slate-500 mt-2">
-                    Agrega un item para empezar a planificar.
-                </p>
-                <div className="mt-6">
-                  <p className="text-slate-500 mb-4">O si lo prefieres, puedes empezar con nuestra lista sugerida.</p>
-                  <button
-                    onClick={handleSeedData}
-                    disabled={isSeeding}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 disabled:bg-green-300"
-                  >
-                    {isSeeding && <Loader size="h-5 w-5" />}
-                    {isSeeding ? 'Cargando...' : 'Cargar lista inicial'}
-                  </button>
+                 <div className="flex justify-center mb-6">
+                    <UserSwitcher currentUser={currentUser} onUserChange={setCurrentUser} />
                 </div>
-             </div>
-           ) : (
-             <ItemList 
-               items={filteredItems}
-               onToggle={handleToggleItem}
-               onDelete={handleDeleteItem}
-               onUpdatePrice={handleUpdateItemPrice}
-             />
-           )}
+                
+                <div className="bg-white p-6 rounded-xl shadow-sm my-8 border border-gray-200">
+                    <Dashboard items={items} totalBudget={totalBudget} onUpdateBudget={handleUpdateBudget} />
+                    <ProgressBySpace items={items} currentUser={currentUser} />
+                </div>
+                
+                <FormularioAgregarItem onAddItem={handleAddItem} />
+                <SuggestionsSection onAddSuggestion={handleAddItem} />
+                
+                <Filters 
+                  items={items}
+                  statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+                  relevanceFilters={relevanceFilters} setRelevanceFilters={setRelevanceFilters}
+                  categoryFilters={categoryFilters} setCategoryFilters={setCategoryFilters}
+                  searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+                />
+
+                {loading ? (
+                    <div className="flex justify-center items-center h-64"><Loader size="h-12 w-12" /></div>
+                ) : (
+                    <ul className="space-y-3 pb-8">
+                        {filteredItems.map(item => (
+                            <ItemCompra 
+                                key={item.id}
+                                item={item}
+                                onToggleComplete={handleToggleComplete}
+                                onDelete={handleDeleteItem}
+                                onUpdatePrice={handleUpdatePrice}
+                                currentUser={currentUser}
+                            />
+                        ))}
+                    </ul>
+                )}
+            </main>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
-
 // =================================================================================
-// --- RENDER ---
+// --- APP INITIALIZATION ---
 // =================================================================================
 const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
 }
-
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
