@@ -164,7 +164,7 @@ const CATEGORIES: { id: Category; name: string; icon: React.FC<{className?: stri
     { id: Category.LIVING, name: 'Living', icon: LivingIcon },
     { id: Category.KITCHEN, name: 'Cocina', icon: KitchenIcon },
     { id: Category.DINING, name: 'Comedor', icon: DiningIcon },
-    { id: Category.MAIN_BEDROOM, name: 'Dormitorio Principal', icon: BedroomIcon },
+    { id: Category.MAIN_BEDROOM, name: 'Dormitorio P.', icon: BedroomIcon },
     { id: Category.PIPE_BEDROOM, name: 'Dormitorio Pipe', icon: BedroomIcon },
     { id: Category.LAUNDRY, name: 'Lavandería', icon: LaundryIcon },
     { id: Category.BATHROOMS, name: 'Baños', icon: BathroomIcon },
@@ -467,7 +467,7 @@ const Dashboard: React.FC<{ items: Item[]; totalBudget: number; onUpdateBudget: 
     };
 
     return (
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Progreso General */}
             <div className="bg-[#EFF6FF] p-5 rounded-xl shadow-sm">
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Progreso General</h3>
@@ -551,85 +551,108 @@ const Dashboard: React.FC<{ items: Item[]; totalBudget: number; onUpdateBudget: 
     );
 };
 
-const ProgressBySpace: React.FC<{ items: Item[]; currentUser: User }> = ({ items, currentUser }) => {
+const ProgressBySpace: React.FC<{ items: Item[]; onCategoryClick: (category: Category) => void; }> = ({ items, onCategoryClick }) => {
     const statsByCategory = useMemo(() => {
-        const result: Record<Category, { total: number, completed: number, felipe: number, valeria: number }> = {} as any;
-
-        for (const category of Object.values(Category)) {
-            const itemsInCategory = items.filter(item => item.category === category);
-            // Only include categories that have items
-            if (itemsInCategory.length > 0) {
-                result[category] = {
-                    total: itemsInCategory.length,
-                    completed: itemsInCategory.filter(i => i.completed).length,
-                    felipe: itemsInCategory.filter(i => i.completed && i.completedBy === User.FELIPE).length,
-                    valeria: itemsInCategory.filter(i => i.completed && i.completedBy === User.VALERIA).length
-                };
+        const categoryMap = new Map<Category, { total: number, completed: number }>();
+        for (const item of items) {
+            if (!categoryMap.has(item.category)) {
+                categoryMap.set(item.category, { total: 0, completed: 0 });
+            }
+            const stats = categoryMap.get(item.category)!;
+            stats.total++;
+            if (item.completed) {
+                stats.completed++;
             }
         }
-        return result;
+        return categoryMap;
     }, [items]);
-    
-    const globalCounts = useMemo(() => {
-        return {
-            felipe: items.filter(i => i.completed && i.completedBy === User.FELIPE).length,
-            valeria: items.filter(i => i.completed && i.completedBy === User.VALERIA).length
-        };
-    }, [items]);
-
-    const progressBarColor = 'bg-blue-500';
 
     return (
-        <div>
+        <section className="my-8">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Progreso por Espacio</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                {CATEGORIES.filter(cat => statsByCategory[cat.id]).map(category => {
-                    const stats = statsByCategory[category.id];
-                    const progress = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
-                    return (
-                        <div key={category.id}>
-                            <div className="flex justify-between items-center mb-1">
-                                <div className="flex items-center space-x-2">
-                                    <category.icon className="h-5 w-5 text-gray-500" />
-                                    <span className="font-semibold text-gray-700">{category.name}</span>
+            <div className="flex space-x-4 overflow-x-auto pb-4 horizontal-scroll-cards" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {CATEGORIES
+                    .filter(cat => statsByCategory.has(cat.id))
+                    .map(category => {
+                        const stats = statsByCategory.get(category.id)!;
+                        const progress = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
+                        return (
+                            <button
+                                key={category.id}
+                                onClick={() => onCategoryClick(category.id)}
+                                className="flex-shrink-0 w-36 bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between text-center transition-all duration-200 ease-in-out hover:shadow-lg hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer"
+                            >
+                                <div className="flex-grow flex flex-col justify-center items-center">
+                                    <category.icon className="h-10 w-10 text-gray-400 mb-3" />
+                                    <p className="text-sm font-semibold text-gray-700 truncate w-full" title={category.name}>{category.name}</p>
                                 </div>
-                                <span className="text-sm font-mono text-gray-500">
-                                    {stats.completed}/{stats.total}
-                                </span>
-                            </div>
-                            <div className="h-1.5 w-full bg-gray-200 rounded-full">
-                                <div
-                                    className={`h-1.5 rounded-full ${progressBarColor}`}
-                                    style={{ width: `${progress}%` }}
-                                ></div>
-                            </div>
-                            <div className="flex justify-between text-xs text-gray-500 mt-2">
-                                <span><UserIcon className="h-3 w-3 inline mr-1" /> Felipe: {stats.felipe}</span>
-                                <span className="text-pink-600 font-medium"><UserIcon className="h-3 w-3 inline mr-1" /> Valeria: {stats.valeria}</span>
-                            </div>
-                        </div>
-                    );
+                                <div className="w-full mt-3">
+                                    <div className="h-1.5 w-full bg-gray-200 rounded-full mb-1.5">
+                                        <div
+                                            className="bg-blue-500 h-1.5 rounded-full"
+                                            style={{ width: `${progress}%` }}
+                                        ></div>
+                                    </div>
+                                    <p className="text-xs font-mono text-gray-500">{`${stats.completed}/${stats.total} Productos`}</p>
+                                 </div>
+                            </button>
+                        );
                 })}
             </div>
-            
-            <div className="mt-6 pt-5 border-t border-gray-200">
-                <h3 className="text-base font-bold text-gray-700 mb-3 text-center">Total Completado por Persona</h3>
-                <div className="flex justify-around items-center bg-gray-50 p-3 rounded-xl shadow-inner">
-                    <div className="text-center">
-                        <p className="flex items-center justify-center text-gray-600 text-sm font-semibold">
-                            <UserIcon className="h-4 w-4 mr-1.5" />
-                            <span>Felipe</span>
-                        </p>
-                        <p className="text-3xl font-bold text-gray-800">{globalCounts.felipe}</p>
+            <style>{`
+                .horizontal-scroll-cards::-webkit-scrollbar {
+                    display: none;
+                }
+            `}</style>
+        </section>
+    );
+};
+
+const CategoryItemsModal: React.FC<{
+    category: Category;
+    items: Item[];
+    onClose: () => void;
+}> = ({ category, items, onClose }) => {
+    const categoryInfo = CATEGORIES.find(c => c.id === category);
+    const categoryItems = items.filter(item => item.category === category);
+    const formatCurrency = (value: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+
+    if (!categoryInfo) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-lg m-4">
+                <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center space-x-3">
+                        <categoryInfo.icon className="h-7 w-7 text-gray-500" />
+                        <h2 className="text-xl font-bold text-gray-800">Productos de {categoryInfo.name}</h2>
                     </div>
-                    <div className="h-12 w-px bg-gray-200"></div>
-                    <div className="text-center">
-                         <p className="flex items-center justify-center text-pink-600 text-sm font-semibold">
-                            <UserIcon className="h-4 w-4 mr-1.5" />
-                            <span>Valeria</span>
-                        </p>
-                        <p className="text-3xl font-bold text-pink-600">{globalCounts.valeria}</p>
-                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <XIcon className="h-6 w-6" />
+                    </button>
+                </div>
+                <div className="max-h-[60vh] overflow-y-auto pr-2">
+                    <ul className="space-y-3">
+                        {categoryItems.length > 0 ? (
+                            categoryItems.map(item => (
+                                <li key={item.id} className={`flex justify-between items-center p-3 rounded-lg ${item.completed ? 'bg-gray-50 text-gray-400' : 'bg-white'}`}>
+                                    <div className="flex items-center space-x-3">
+                                       <div className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center border-2 ${item.completed ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
+                                         {item.completed && <CheckIcon className="h-4 w-4 text-white" />}
+                                       </div>
+                                       <span className={`${item.completed ? 'line-through' : 'font-medium text-gray-700'}`}>
+                                          {item.name}
+                                       </span>
+                                    </div>
+                                    <span className={`font-semibold ${item.completed ? 'line-through' : 'text-gray-800'}`}>
+                                        {formatCurrency(item.price)}
+                                    </span>
+                                </li>
+                            ))
+                        ) : (
+                            <p className="text-center text-gray-500 py-4">No hay productos en esta categoría.</p>
+                        )}
+                    </ul>
                 </div>
             </div>
         </div>
@@ -637,108 +660,150 @@ const ProgressBySpace: React.FC<{ items: Item[]; currentUser: User }> = ({ items
 };
 
 
-const ItemCompra: React.FC<{
+const EditItemModal: React.FC<{
     item: Item;
-    onToggleComplete: (id: string, completed: boolean) => void;
-    onDelete: (id: string) => void;
-    currentUser: User;
-    onUpdatePrice: (id: string, price: number) => void;
-}> = ({ item, onToggleComplete, onDelete, currentUser, onUpdatePrice }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editedPrice, setEditedPrice] = useState('');
+    onUpdate: (item: Item) => void;
+    onClose: () => void;
+}> = ({ item, onUpdate, onClose }) => {
+    const [name, setName] = useState(item.name);
+    const [price, setPrice] = useState(new Intl.NumberFormat('es-CL').format(item.price));
+    const [category, setCategory] = useState<Category>(item.category);
+    const [relevance, setRelevance] = useState<Relevance>(item.relevance);
 
-    useEffect(() => {
-        setEditedPrice(new Intl.NumberFormat('es-CL').format(item.price));
-    }, [item.price]);
-
-    const relevanceStyle = RELEVANCE_STYLES[item.relevance];
-    const formatCurrency = (value: number) => new Intl.NumberFormat('es-CL').format(value);
-
-    const handleToggle = () => {
-        if (isEditing) return;
-        onToggleComplete(item.id, !item.completed);
-    };
-
-    const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value.replace(/\D/g, '');
-        setEditedPrice(value === '' ? '' : new Intl.NumberFormat('es-CL').format(Number(value)));
-    };
-
-    const handleSave = () => {
-        const newPrice = parseInt(editedPrice.replace(/\./g, ''), 10);
-        if (!isNaN(newPrice) && newPrice !== item.price) {
-            onUpdatePrice(item.id, newPrice);
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (name && price && category) {
+            onUpdate({
+                ...item,
+                name,
+                price: parseInt(price.replace(/\./g, ''), 10),
+                category,
+                relevance
+            });
+            onClose();
         }
-        setIsEditing(false);
-    };
-
-    const handleCancel = () => {
-        setEditedPrice(new Intl.NumberFormat('es-CL').format(item.price));
-        setIsEditing(false);
     };
 
     return (
-        <li className={`flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-200 transition-all duration-200 ${item.completed ? 'opacity-60' : ''}`}>
-            <button
-                onClick={handleToggle}
-                disabled={isEditing}
-                className={`flex-shrink-0 h-6 w-6 rounded-md mr-4 flex items-center justify-center border-2 ${item.completed ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300'} transition-colors cursor-pointer disabled:cursor-not-allowed`}
-                aria-label={item.completed ? `Marcar "${item.name}" como pendiente` : `Marcar "${item.name}" como completado`}
-            >
-                {item.completed && <CheckIcon className="h-4 w-4 text-white" />}
-            </button>
-            <div className={`flex-grow ${item.completed && !isEditing ? 'line-through text-gray-500' : ''}`}>
-                <p className="font-bold text-gray-800">{item.name}</p>
-                <div className="flex items-center space-x-3 text-sm mt-1">
-                    <span className={`inline-flex items-center ${relevanceStyle.bg} ${relevanceStyle.text} px-2.5 py-0.5 rounded-full text-xs font-bold`}>
-                        <span className={`h-1.5 w-1.5 mr-1.5 rounded-full ${relevanceStyle.dot}`}></span>
-                        {item.relevance}
-                    </span>
-
-                    {isEditing ? (
-                         <div className="relative flex items-center">
-                            <span className="absolute left-2 text-gray-400">$</span>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md m-4">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-bold text-gray-800">Editar Item</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <XIcon className="h-6 w-6" />
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label htmlFor="editItemName" className="block text-sm font-medium text-gray-700">Nombre del Item *</label>
+                        <input
+                            id="editItemName"
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                            required
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="editItemCategory" className="block text-sm font-medium text-gray-700">Espacio / Categoría *</label>
+                            <select id="editItemCategory" value={category} onChange={(e) => setCategory(e.target.value as Category)} required
+                                className="appearance-none mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                                style={selectArrowStyle}
+                            >
+                                {CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="editItemRelevance" className="block text-sm font-medium text-gray-700">Relevancia</label>
+                            <select id="editItemRelevance" value={relevance} onChange={(e) => setRelevance(e.target.value as Relevance)}
+                                className="appearance-none mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                                style={selectArrowStyle}
+                            >
+                                {Object.values(Relevance).map(rel => <option key={rel} value={rel}>{rel}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label htmlFor="editItemPrice" className="block text-sm font-medium text-gray-700">Precio (CLP) *</label>
+                        <div className="relative mt-1">
+                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                <span className="text-gray-400 sm:text-sm">$</span>
+                            </div>
                             <input
+                                id="editItemPrice"
                                 type="text"
-                                value={editedPrice}
-                                onChange={handlePriceChange}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleSave();
-                                    if (e.key === 'Escape') handleCancel();
+                                value={price}
+                                onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '');
+                                    if (value === '') {
+                                        setPrice('');
+                                    } else {
+                                        setPrice(new Intl.NumberFormat('es-CL').format(Number(value)));
+                                    }
                                 }}
-                                className="w-28 pl-5 pr-2 py-0.5 text-sm font-medium text-gray-800 bg-gray-50 border border-gray-200 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                                autoFocus
+                                className="w-full pl-7 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                                required
                             />
                         </div>
-                    ) : (
-                        <span className="text-gray-600 font-medium">${formatCurrency(item.price)}</span>
-                    )}
+                    </div>
+                    <button type="submit" className="w-full px-4 py-3 text-base font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">Guardar Cambios</button>
+                </form>
+            </div>
+        </div>
+    );
+};
 
-                    {item.completed && item.completedBy && (
-                        <span className="text-green-700 font-medium flex items-center text-xs"><UserIcon className="h-3 w-3 mr-1"/>{item.completedBy}</span>
-                    )}
+const ItemCompra: React.FC<{
+    item: Item;
+    onToggleComplete: (id: string, completed: boolean) => void;
+    onEdit: (item: Item) => void;
+    onDelete: (id: string) => void;
+}> = ({ item, onToggleComplete, onEdit, onDelete }) => {
+    const formatCurrency = (value: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+
+    const handleToggle = () => {
+        onToggleComplete(item.id, !item.completed);
+    };
+
+    const relevancePillStyles: Record<Relevance, string> = {
+        [Relevance.HIGH]: 'bg-red-100 text-red-700',
+        [Relevance.MEDIUM]: 'bg-yellow-100 text-yellow-700',
+        [Relevance.LOW]: 'bg-green-100 text-green-700',
+    };
+
+    return (
+        <li className="group flex items-center p-3 bg-white rounded-xl shadow-sm border border-gray-100 transition-all duration-200">
+            <button
+                onClick={handleToggle}
+                className={`flex-shrink-0 h-10 w-10 rounded-full mr-4 flex items-center justify-center border-2 transition-colors duration-300 ${item.completed ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'}`}
+                aria-label={item.completed ? `Marcar "${item.name}" como pendiente` : `Marcar "${item.name}" como completado`}
+            >
+                {item.completed && <CheckIcon className="h-6 w-6 text-white" />}
+            </button>
+            
+            <div className={`flex-grow ${item.completed ? 'text-gray-400' : ''}`}>
+                <p className={`font-semibold text-gray-800 ${item.completed ? 'line-through' : ''}`}>{item.name}</p>
+                <div className="flex items-center space-x-2 text-sm mt-1">
+                    <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${relevancePillStyles[item.relevance]}`}>
+                        {item.relevance}
+                    </span>
                 </div>
             </div>
-            <div className="flex items-center ml-4 space-x-1">
-                {isEditing ? (
-                    <>
-                        <button onClick={handleSave} className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-100" aria-label="Guardar">
-                            <CheckIcon className="h-5 w-5" />
-                        </button>
-                        <button onClick={handleCancel} className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-200" aria-label="Cancelar">
-                            <XIcon className="h-5 w-5" />
-                        </button>
-                    </>
-                ) : (
-                    <>
-                        <button onClick={() => setIsEditing(true)} disabled={item.completed} className="text-gray-400 hover:text-indigo-600 p-2 rounded-full hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Editar item">
-                            <PencilIcon className="h-5 w-5" />
-                        </button>
-                        <button onClick={() => onDelete(item.id)} className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-100" aria-label="Eliminar item">
-                            <TrashIcon className="h-5 w-5" />
-                        </button>
-                    </>
-                )}
+
+            <div className="ml-4 flex items-center space-x-2">
+                 <p className={`font-bold text-lg ${item.completed ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                    {formatCurrency(item.price)}
+                </p>
+                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <button onClick={() => onEdit(item)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded-full" aria-label={`Editar ${item.name}`}>
+                        <PencilIcon className="h-5 w-5" />
+                    </button>
+                    <button onClick={() => onDelete(item.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-full" aria-label={`Eliminar ${item.name}`}>
+                        <TrashIcon className="h-5 w-5" />
+                    </button>
+                </div>
             </div>
         </li>
     );
@@ -889,43 +954,13 @@ const SuggestionsSection: React.FC<{ onAddSuggestion: (item: Omit<Item, 'id'|'co
 };
 
 const Filters: React.FC<{
-  items: Item[];
-  statusFilter: string;
-  setStatusFilter: (status: string) => void;
+  activeCategory: Category | null;
+  setActiveCategory: (category: Category | null) => void;
+  statusFilter: 'Pendientes' | 'Completados' | 'Todos';
+  setStatusFilter: (status: 'Pendientes' | 'Completados' | 'Todos') => void;
   relevanceFilters: Set<Relevance>;
   setRelevanceFilters: (filters: Set<Relevance>) => void;
-  categoryFilters: Set<Category>;
-  setCategoryFilters: (filters: Set<Category>) => void;
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
-}> = ({ items, statusFilter, setStatusFilter, relevanceFilters, setRelevanceFilters, categoryFilters, setCategoryFilters, searchTerm, setSearchTerm }) => {
-    
-    const counts = useMemo(() => {
-        return {
-            todos: items.length,
-            pendientes: items.filter(i => !i.completed).length,
-            completados: items.filter(i => i.completed).length,
-            byCategory: CATEGORIES.reduce((acc, cat) => {
-                acc[cat.id] = items.filter(i => i.category === cat.id).length;
-                return acc;
-            }, {} as Record<Category, number>),
-            byRelevance: {
-                [Relevance.HIGH]: items.filter(i => i.relevance === Relevance.HIGH).length,
-                [Relevance.MEDIUM]: items.filter(i => i.relevance === Relevance.MEDIUM).length,
-                [Relevance.LOW]: items.filter(i => i.relevance === Relevance.LOW).length,
-            }
-        };
-    }, [items]);
-
-    const handleCategoryToggle = (category: Category) => {
-        const newFilters = new Set(categoryFilters);
-        if (newFilters.has(category)) {
-            newFilters.delete(category);
-        } else {
-            newFilters.add(category);
-        }
-        setCategoryFilters(newFilters);
-    };
+}> = ({ activeCategory, setActiveCategory, statusFilter, setStatusFilter, relevanceFilters, setRelevanceFilters }) => {
     
     const handleRelevanceToggle = (relevance: Relevance) => {
         const newFilters = new Set(relevanceFilters);
@@ -938,50 +973,51 @@ const Filters: React.FC<{
     };
     
     const relevanceFilterConfig = [
-      { id: Relevance.HIGH, label: 'Alta', activeClass: 'bg-red-500 text-white' },
-      { id: Relevance.MEDIUM, label: 'Media', activeClass: 'bg-yellow-500 text-white' },
-      { id: Relevance.LOW, label: 'Baja', activeClass: 'bg-blue-500 text-white' }
+      { id: Relevance.HIGH, label: 'Alta' },
+      { id: Relevance.MEDIUM, label: 'Media' },
+      { id: Relevance.LOW, label: 'Baja' }
+    ];
+
+    const categoryTabs = [
+        { id: null, name: 'Todos', icon: HouseIcon },
+        ...CATEGORIES
     ];
 
     return (
-        <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-200">
-            <div className="flex flex-wrap gap-2 items-center">
-                {/* Status Filters */}
-                <button onClick={() => setStatusFilter('Todos')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Todos' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Todos ({counts.todos})</button>
-                <button onClick={() => setStatusFilter('Pendientes')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Pendientes' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Pendientes ({counts.pendientes})</button>
-                <button onClick={() => setStatusFilter('Completados')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Completados' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Completados ({counts.completados})</button>
-                
-                <div className="h-6 w-px bg-gray-300 mx-2"></div>
-
-                {/* Relevance Filters */}
-                {relevanceFilterConfig.map(rel => (
-                     <button key={rel.id} onClick={() => handleRelevanceToggle(rel.id)} className={`flex items-center space-x-1.5 px-3 py-1 text-sm font-semibold rounded-full ${relevanceFilters.has(rel.id) ? rel.activeClass : 'bg-gray-200 text-gray-700'}`}>
-                        <span className={`h-2 w-2 rounded-full ${RELEVANCE_STYLES[rel.id].dot}`}></span>
-                        <span>{rel.label} ({counts.byRelevance[rel.id]})</span>
-                    </button>
-                ))}
-
-                <div className="h-6 w-px bg-gray-300 mx-2"></div>
-
-                {/* Category Filters */}
-                {CATEGORIES.filter(c => counts.byCategory[c.id] > 0).map(cat => (
-                    <button key={cat.id} onClick={() => handleCategoryToggle(cat.id)} className={`flex items-center space-x-1.5 px-3 py-1 text-sm font-semibold rounded-full ${categoryFilters.has(cat.id) ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}>
-                        <cat.icon className="h-4 w-4" />
-                        <span>{cat.name} ({counts.byCategory[cat.id]})</span>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+            {/* Category Tabs */}
+            <div className="flex space-x-1 sm:space-x-2 border-b border-gray-200 overflow-x-auto pb-0 -mx-4 px-4 horizontal-scroll-cards" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {categoryTabs.map(cat => (
+                    <button 
+                        key={cat.id || 'all'}
+                        onClick={() => setActiveCategory(cat.id)}
+                        className={`flex-shrink-0 flex items-center space-x-2 py-3 px-3 sm:px-4 text-sm font-semibold transition-colors border-b-2 ${activeCategory === cat.id ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-800'}`}
+                    >
+                        <cat.icon className="h-5 w-5" />
+                        <span className="hidden sm:inline">{cat.name}</span>
                     </button>
                 ))}
             </div>
-            <div className="relative mt-4">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <SearchIcon className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                    type="text"
-                    placeholder="Buscar item..."
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 placeholder-gray-400"
-                />
+            <style>{`.horizontal-scroll-cards::-webkit-scrollbar { display: none; }`}</style>
+            
+            {/* Smart Filters Bar */}
+            <div className="mt-4">
+                 <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-bold text-gray-600 mr-2">Filtros:</span>
+                    {/* Status Filters */}
+                    <button onClick={() => setStatusFilter('Pendientes')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Pendientes' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Pendientes</button>
+                    <button onClick={() => setStatusFilter('Completados')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Completados' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Completados</button>
+                    
+                    <div className="h-4 w-px bg-gray-300 mx-1"></div>
+
+                     {/* Relevance Filters */}
+                    {relevanceFilterConfig.map(rel => (
+                        <button key={rel.id} onClick={() => handleRelevanceToggle(rel.id)} className={`px-3 py-1 text-sm font-semibold rounded-full ${relevanceFilters.has(rel.id) ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>
+                            {rel.label}
+                        </button>
+                    ))}
+                    <button onClick={() => setStatusFilter('Todos')} className={`ml-auto px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Todos' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Ver Todos</button>
+                 </div>
             </div>
         </div>
     );
@@ -993,13 +1029,13 @@ const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<User>(User.FELIPE);
     const [totalBudget, setTotalBudget] = useState(5000000); // Default budget
-    
-    // Filter states
-    const [statusFilter, setStatusFilter] = useState('Todos'); // 'Todos', 'Pendientes', 'Completados'
-    const [relevanceFilters, setRelevanceFilters] = useState<Set<Relevance>>(new Set());
-    const [categoryFilters, setCategoryFilters] = useState<Set<Category>>(new Set());
-    const [searchTerm, setSearchTerm] = useState('');
+    const [editingItem, setEditingItem] = useState<Item | null>(null);
+    const [viewingCategory, setViewingCategory] = useState<Category | null>(null);
 
+    // Filter states
+    const [statusFilter, setStatusFilter] = useState<'Pendientes' | 'Completados' | 'Todos'>('Pendientes');
+    const [relevanceFilters, setRelevanceFilters] = useState<Set<Relevance>>(new Set());
+    const [activeCategory, setActiveCategory] = useState<Category | null>(null);
 
     useEffect(() => {
       const q = itemsCollection.orderBy('name');
@@ -1052,24 +1088,6 @@ const App: React.FC = () => {
         }
     };
 
-    const handleDeleteItem = async (id: string) => {
-        const itemRef = db.collection('items').doc(id);
-        try {
-            await itemRef.delete();
-        } catch (error) {
-            console.error("Error deleting item: ", error);
-        }
-    };
-
-    const handleUpdatePrice = async (id: string, price: number) => {
-        const itemRef = db.collection('items').doc(id);
-        try {
-            await itemRef.update({ price });
-        } catch (error) {
-            console.error("Error updating item price: ", error);
-        }
-    };
-
     const handleUpdateBudget = async (newBudget: number) => {
         const budgetDocRef = db.collection('app_config').doc('budget');
         try {
@@ -1078,6 +1096,29 @@ const App: React.FC = () => {
             console.error("Error updating budget: ", error);
         }
     };
+
+    const handleUpdateItem = async (updatedItem: Item) => {
+        const { id, ...dataToUpdate } = updatedItem;
+        const itemRef = db.collection('items').doc(id);
+        try {
+            await itemRef.update(dataToUpdate);
+            setEditingItem(null); // Close modal
+        } catch (error) {
+            console.error("Error updating item: ", error);
+        }
+    };
+
+    const handleDeleteItem = async (id: string) => {
+        if (window.confirm('¿Estás seguro de que quieres eliminar este item?')) {
+            const itemRef = db.collection('items').doc(id);
+            try {
+                await itemRef.delete();
+            } catch (error) {
+                console.error("Error deleting item: ", error);
+            }
+        }
+    };
+
 
     const filteredItems = useMemo(() => {
         return items
@@ -1091,13 +1132,10 @@ const App: React.FC = () => {
                 return relevanceFilters.has(item.relevance);
             })
             .filter(item => {
-                if (categoryFilters.size === 0) return true;
-                return categoryFilters.has(item.category);
-            })
-            .filter(item => {
-                return item.name.toLowerCase().includes(searchTerm.toLowerCase());
+                if (!activeCategory) return true;
+                return item.category === activeCategory;
             });
-    }, [items, statusFilter, categoryFilters, searchTerm, relevanceFilters]);
+    }, [items, statusFilter, activeCategory, relevanceFilters]);
     
     return (
         <div className="min-h-screen">
@@ -1110,20 +1148,19 @@ const App: React.FC = () => {
                     <UserSwitcher currentUser={currentUser} onUserChange={setCurrentUser} />
                 </div>
                 
-                <div className="bg-white p-6 rounded-xl shadow-sm my-8 border border-gray-200">
+                <div className="bg-white p-6 rounded-xl shadow-sm mt-8 border border-gray-200">
                     <Dashboard items={items} totalBudget={totalBudget} onUpdateBudget={handleUpdateBudget} />
-                    <ProgressBySpace items={items} currentUser={currentUser} />
                 </div>
                 
+                <ProgressBySpace items={items} onCategoryClick={setViewingCategory} />
+
                 <FormularioAgregarItem onAddItem={handleAddItem} />
                 <SuggestionsSection onAddSuggestion={handleAddItem} />
                 
                 <Filters 
-                  items={items}
                   statusFilter={statusFilter} setStatusFilter={setStatusFilter}
                   relevanceFilters={relevanceFilters} setRelevanceFilters={setRelevanceFilters}
-                  categoryFilters={categoryFilters} setCategoryFilters={setCategoryFilters}
-                  searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+                  activeCategory={activeCategory} setActiveCategory={setActiveCategory}
                 />
 
                 {loading ? (
@@ -1135,14 +1172,27 @@ const App: React.FC = () => {
                                 key={item.id}
                                 item={item}
                                 onToggleComplete={handleToggleComplete}
+                                onEdit={setEditingItem}
                                 onDelete={handleDeleteItem}
-                                onUpdatePrice={handleUpdatePrice}
-                                currentUser={currentUser}
                             />
                         ))}
                     </ul>
                 )}
             </main>
+             {editingItem && (
+                <EditItemModal 
+                    item={editingItem} 
+                    onUpdate={handleUpdateItem}
+                    onClose={() => setEditingItem(null)}
+                />
+            )}
+            {viewingCategory && (
+                <CategoryItemsModal
+                    category={viewingCategory}
+                    items={items}
+                    onClose={() => setViewingCategory(null)}
+                />
+            )}
         </div>
     );
 };
