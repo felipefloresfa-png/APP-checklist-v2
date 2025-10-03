@@ -51,6 +51,7 @@ export interface Item {
   relevance: Relevance;
   price: number;
   completed: boolean;
+  completedBy?: User | null;
 }
 
 export interface SuggestedItem {
@@ -107,14 +108,14 @@ const KitchenIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 const LaundryIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a2 2 0 012-2h14a2 2 0 012 2v16a2 2 0 01-2 2H5a2 2 0 01-2-2V4z" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 15a4 4 0 100-8 4 4 0 000 8z" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M18 5h-2" />
   </svg>
 );
 const LivingIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M17 10H7a2 2 0 00-2 2v2a2 2 0 002 2h10a2 2 0 002-2v-2a2 2 0 00-2-2z" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M7 10V8a2 2 0 012-2h6a2 2 0 012 2v2" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M17 16v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2" />
@@ -147,6 +148,21 @@ const UserIcon: React.FC<{ className?: string }> = ({ className }) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
   </svg>
 );
+const PencilIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" />
+  </svg>
+);
+const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+  </svg>
+);
+const XIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
 
 // =================================================================================
 // --- FROM constants.ts ---
@@ -173,7 +189,7 @@ const RELEVANCE_STYLES: Record<Relevance, { bg: string; text: string, dot: strin
 // =================================================================================
 // --- FROM initialData.ts ---
 // =================================================================================
-const initialItems: Omit<Item, 'id' | 'completed'>[] = [
+const initialItems: Omit<Item, 'id' | 'completed' | 'completedBy'>[] = [
   // LAVANDERIA
   { name: 'Lavadora secadora', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 450000 },
   { name: 'Repisa para detergentes', category: Category.LAUNDRY, relevance: Relevance.LOW, price: 25000 },
@@ -395,28 +411,26 @@ interface UserSwitcherProps {
 }
 const UserSwitcher: React.FC<UserSwitcherProps> = ({ activeUser, onUserChange }) => {
   return (
-    <div className="grid grid-cols-2 gap-2 bg-slate-200 p-1 rounded-xl">
+    <div className="flex w-full max-w-sm mx-auto p-1 bg-slate-200 rounded-full my-6">
       <button
         onClick={() => onUserChange(User.FELIPE)}
-        className={`flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-semibold transition-colors duration-300 ${
-          activeUser === User.FELIPE 
-          ? 'bg-indigo-600 text-white shadow' 
-          : 'bg-transparent text-slate-600 hover:bg-slate-300'
+        className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-full font-semibold transition-all duration-300 ${
+          activeUser === User.FELIPE
+            ? 'bg-indigo-600 text-white shadow'
+            : 'bg-transparent text-slate-600 hover:bg-slate-200'
         }`}
       >
-        <UserIcon className="w-5 h-5" />
-        {User.FELIPE}
+        <UserIcon className="w-5 h-5" /> {User.FELIPE}
       </button>
       <button
         onClick={() => onUserChange(User.VALERIA)}
-        className={`flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-semibold transition-colors duration-300 ${
-          activeUser === User.VALERIA 
-          ? 'bg-red-500 text-white shadow' 
-          : 'bg-transparent text-slate-600 hover:bg-slate-300'
+        className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-full font-semibold transition-all duration-300 ${
+          activeUser === User.VALERIA
+            ? 'bg-red-500 text-white shadow'
+            : 'bg-transparent text-slate-600 hover:bg-slate-200'
         }`}
       >
-        <UserIcon className="w-5 h-5" />
-        {User.VALERIA}
+        <UserIcon className="w-5 h-5" /> {User.VALERIA}
       </button>
     </div>
   );
@@ -482,9 +496,61 @@ const Dashboard: React.FC<DashboardProps> = ({ stats }) => {
   );
 };
 
+interface CategoryProgressData {
+    name: string;
+    icon: React.FC<{ className?: string }>;
+    completed: number;
+    total: number;
+    felipe: number;
+    valeria: number;
+}
+interface CategoryProgressProps {
+    stats: CategoryProgressData[];
+}
+const CategoryProgress: React.FC<CategoryProgressProps> = ({ stats }) => {
+    return (
+        <div>
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Progreso por Espacio</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                {stats.map(stat => {
+                    const percentage = stat.total > 0 ? (stat.completed / stat.total) * 100 : 0;
+                    const Icon = stat.icon;
+                    return (
+                        <div key={stat.name}>
+                            <div className="flex justify-between items-center mb-1">
+                                <div className="flex items-center gap-2">
+                                    <Icon className="w-5 h-5 text-slate-500" />
+                                    <span className="text-sm font-medium text-slate-700">{stat.name}</span>
+                                </div>
+                                <span className="text-sm font-medium text-slate-500">{stat.completed} / {stat.total}</span>
+                            </div>
+                            <div className="w-full bg-slate-200 rounded-full h-2">
+                                <div
+                                    className="bg-indigo-500 h-2 rounded-full transition-all duration-500"
+                                    style={{ width: `${percentage}%` }}
+                                ></div>
+                            </div>
+                            <div className="flex justify-between items-center text-xs mt-1.5 text-slate-500 px-1">
+                                <div className="flex items-center gap-1.5">
+                                    <UserIcon className="w-3 h-3 text-indigo-500" />
+                                    <span>Felipe: <strong>{stat.felipe}</strong></span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <UserIcon className="w-3 h-3 text-red-500" />
+                                    <span>Valeria: <strong>{stat.valeria}</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
 
 interface CategorySelectorProps {
-  selectedCategory: Category;
+  selectedCategory: Category | null;
   onCategoryChange: (category: Category) => void;
 }
 const CategorySelector: React.FC<CategorySelectorProps> = ({ selectedCategory, onCategoryChange }) => {
@@ -531,7 +597,7 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({ selectedCategory, o
           className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm"
           tabIndex={-1}
           role="listbox"
-          aria-activedescendant={selectedCategory}
+          aria-activedescendant={selectedCategory || undefined}
         >
           {CATEGORIES.map(cat => (
             <li
@@ -556,17 +622,17 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({ selectedCategory, o
 };
 
 interface AddItemFormProps {
-  onAddItem: (item: Omit<Item, 'id' | 'completed'>) => void;
+  onAddItem: (item: Omit<Item, 'id' | 'completed' | 'completedBy'>) => void;
 }
 const AddItemForm: React.FC<AddItemFormProps> = ({ onAddItem }) => {
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<Category>(Category.LIVING);
+  const [category, setCategory] = useState<Category | null>(null);
   const [relevance, setRelevance] = useState<Relevance>(Relevance.MEDIUM);
   const [price, setPrice] = useState('');
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim() && price.trim()) {
+    if (name.trim() && price.trim() && category) {
       onAddItem({
         name: name.trim(),
         category,
@@ -575,6 +641,7 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onAddItem }) => {
       });
       setName('');
       setPrice('');
+      setCategory(null);
       setRelevance(Relevance.MEDIUM);
     }
   };
@@ -586,6 +653,7 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onAddItem }) => {
   };
 
   const formattedPrice = price ? new Intl.NumberFormat('es-CL').format(Number(price)) : '';
+  const isFormValid = name.trim() !== '' && price.trim() !== '' && category !== null;
 
   return (
     <div>
@@ -595,7 +663,7 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onAddItem }) => {
       </h2>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
-          <label htmlFor="item-name" className="block text-sm font-medium text-slate-600 mb-1">Nombre del Item</label>
+          <label htmlFor="item-name" className="block text-sm font-medium text-slate-600 mb-1">Nombre del Item *</label>
           <input
             id="item-name"
             type="text"
@@ -607,7 +675,7 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onAddItem }) => {
           />
         </div>
         <div>
-          <label htmlFor="item-category" className="block text-sm font-medium text-slate-600 mb-1">Espacio / Categoría</label>
+          <label htmlFor="item-category" className="block text-sm font-medium text-slate-600 mb-1">Espacio / Categoría *</label>
           <CategorySelector selectedCategory={category} onCategoryChange={setCategory} />
         </div>
         <div>
@@ -623,7 +691,7 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onAddItem }) => {
             <option value={Relevance.LOW}>♦ Baja</option>
           </select>
         </div>
-         <div className="md:col-span-2">
+         <div className='md:col-span-2'>
            <label htmlFor="item-price" className="block text-sm font-medium text-slate-600 mb-1">Precio (CLP) *</label>
            <div className="relative">
              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -644,7 +712,8 @@ const AddItemForm: React.FC<AddItemFormProps> = ({ onAddItem }) => {
         <div className="md:col-span-2">
           <button
             type="submit"
-            className="w-full py-3 bg-violet-400 text-white font-semibold rounded-lg shadow-md hover:bg-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 transition duration-200"
+            disabled={!isFormValid}
+            className="w-full py-3 bg-violet-400 text-white font-semibold rounded-lg shadow-md hover:bg-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 transition duration-200 disabled:bg-violet-300 disabled:cursor-not-allowed"
           >
             Agregar
           </button>
@@ -787,11 +856,36 @@ interface ItemProps {
   item: Item;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  onUpdatePrice: (id: string, newPrice: number) => void;
 }
-const ItemComponent: React.FC<ItemProps> = ({ item, onToggle, onDelete }) => {
+const ItemComponent: React.FC<ItemProps> = ({ item, onToggle, onDelete, onUpdatePrice }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [newPrice, setNewPrice] = useState(item.price.toString());
+
   const categoryInfo = CATEGORIES.find(c => c.id === item.category);
   const relevanceInfo = RELEVANCE_STYLES[item.relevance];
   const formattedPrice = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(item.price);
+  
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    const numericValue = rawValue.replace(/[^\d]/g, '');
+    setNewPrice(numericValue);
+  };
+  
+  const formattedNewPrice = newPrice ? new Intl.NumberFormat('es-CL').format(Number(newPrice)) : '';
+
+  const handleSave = () => {
+    const priceNumber = Number(newPrice);
+    if (!isNaN(priceNumber) && priceNumber >= 0) {
+        onUpdatePrice(item.id, priceNumber);
+        setIsEditing(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setNewPrice(item.price.toString());
+  };
 
   return (
     <div className={`flex items-center justify-between bg-slate-50 p-3 rounded-lg transition-all duration-300 ${item.completed ? 'opacity-60' : ''}`}>
@@ -806,7 +900,7 @@ const ItemComponent: React.FC<ItemProps> = ({ item, onToggle, onDelete }) => {
           <p className={`font-medium ${item.completed ? 'line-through text-slate-500' : 'text-slate-800'}`}>
             {item.name}
           </p>
-          <div className="flex items-center gap-4 text-sm text-slate-500 mt-1">
+          <div className="flex items-center gap-4 text-sm text-slate-500 mt-1 flex-wrap">
             <div className="flex items-center gap-1">
                 {categoryInfo && <categoryInfo.icon className="w-4 h-4" />}
                 <span>{item.category}</span>
@@ -815,18 +909,74 @@ const ItemComponent: React.FC<ItemProps> = ({ item, onToggle, onDelete }) => {
                 <span className={`w-2 h-2 rounded-full ${relevanceInfo.dot}`}></span>
                 <span>{item.relevance}</span>
             </div>
+            {item.completed && item.completedBy && (
+                <div className="flex items-center gap-1.5">
+                    <CheckIcon className={`w-4 h-4 ${item.completedBy === User.FELIPE ? 'text-indigo-500' : 'text-red-500'}`} />
+                    <span>{item.completedBy}</span>
+                </div>
+            )}
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-4">
-        <p className={`font-semibold text-slate-700 ${item.completed ? 'line-through' : ''}`}>{formattedPrice}</p>
-        <button
-          onClick={() => onDelete(item.id)}
-          className="text-slate-400 hover:text-red-500 transition-colors duration-200 p-1 rounded-full"
-          aria-label={`Eliminar ${item.name}`}
-        >
-          <TrashIcon className="w-5 h-5" />
-        </button>
+      <div className="flex items-center gap-2 md:gap-4">
+        {isEditing ? (
+          <div className="relative">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <span className="text-slate-500 sm:text-sm">$</span>
+            </div>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={formattedNewPrice}
+              onChange={handlePriceChange}
+              className="w-28 pl-7 pr-2 py-1 bg-white border border-slate-300 rounded-md focus:ring-1 focus:ring-indigo-500 focus:outline-none text-slate-900"
+              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+              autoFocus
+            />
+          </div>
+        ) : (
+          <p className={`font-semibold text-slate-700 w-28 text-right ${item.completed ? 'line-through' : ''}`}>{formattedPrice}</p>
+        )}
+        <div className="flex items-center">
+            {isEditing ? (
+            <>
+                <button
+                onClick={handleSave}
+                className="text-slate-400 hover:text-green-500 transition-colors duration-200 p-1 rounded-full"
+                aria-label={`Guardar precio de ${item.name}`}
+                >
+                <CheckIcon className="w-5 h-5" />
+                </button>
+                <button
+                onClick={handleCancel}
+                className="text-slate-400 hover:text-red-500 transition-colors duration-200 p-1 rounded-full"
+                aria-label={`Cancelar edición de ${item.name}`}
+                >
+                <XIcon className="w-5 h-5" />
+                </button>
+            </>
+            ) : (
+            <>
+                <button
+                onClick={() => {
+                    setIsEditing(true);
+                    setNewPrice(item.price.toString());
+                }}
+                className="text-slate-400 hover:text-indigo-500 transition-colors duration-200 p-1 rounded-full"
+                aria-label={`Editar ${item.name}`}
+                >
+                <PencilIcon className="w-5 h-5" />
+                </button>
+                <button
+                onClick={() => onDelete(item.id)}
+                className="text-slate-400 hover:text-red-500 transition-colors duration-200 p-1 rounded-full"
+                aria-label={`Eliminar ${item.name}`}
+                >
+                <TrashIcon className="w-5 h-5" />
+                </button>
+            </>
+            )}
+        </div>
       </div>
     </div>
   );
@@ -836,8 +986,9 @@ interface ItemListProps {
   items: Item[];
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  onUpdatePrice: (id: string, newPrice: number) => void;
 }
-const ItemList: React.FC<ItemListProps> = ({ items, onToggle, onDelete }) => {
+const ItemList: React.FC<ItemListProps> = ({ items, onToggle, onDelete, onUpdatePrice }) => {
   if (items.length === 0) {
     return (
         <div className="text-center py-12">
@@ -860,6 +1011,7 @@ const ItemList: React.FC<ItemListProps> = ({ items, onToggle, onDelete }) => {
           item={item}
           onToggle={onToggle}
           onDelete={onDelete}
+          onUpdatePrice={onUpdatePrice}
         />
       ))}
     </div>
@@ -871,11 +1023,11 @@ const ItemList: React.FC<ItemListProps> = ({ items, onToggle, onDelete }) => {
 // --- MAIN APP COMPONENT ---
 // =================================================================================
 const App: React.FC = () => {
-  const [activeUser, setActiveUser] = useState<User>(User.FELIPE);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSeeding, setIsSeeding] = useState(false);
   const [budget, setBudget] = useState(5000000); // Presupuesto de ejemplo
+  const [activeUser, setActiveUser] = useState<User>(User.FELIPE);
 
   const itemsCollectionRef = useMemo(() => collection(db, "items"), []);
 
@@ -893,6 +1045,7 @@ const App: React.FC = () => {
             ...item,
             category: item.category as Category,
             relevance: item.relevance as Relevance,
+            completedBy: item.completedBy || null,
         }));
 
         setItems(typedItems);
@@ -905,22 +1058,21 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, [itemsCollectionRef]);
 
-  const handleAddItem = useCallback(async (newItem: Omit<Item, 'id' | 'completed'>) => {
+  const handleAddItem = useCallback(async (newItem: Omit<Item, 'id' | 'completed' | 'completedBy'>) => {
     try {
-      await addDoc(itemsCollectionRef, { ...newItem, completed: false });
+      await addDoc(itemsCollectionRef, { ...newItem, completed: false, completedBy: null });
     } catch (error) {
         console.error("Error al agregar documento: ", error);
     }
   }, [itemsCollectionRef]);
 
   const handleAddSuggestedItem = useCallback((suggestedItem: SuggestedItem) => {
-    const newItem: Omit<Item, 'id' | 'completed'> = {
+    handleAddItem({
       name: suggestedItem.name,
       category: suggestedItem.category,
       relevance: suggestedItem.relevance,
-      price: suggestedItem.price,
-    };
-    handleAddItem(newItem);
+      price: suggestedItem.price
+    });
   }, [handleAddItem]);
   
   const handleToggleItem = useCallback(async (id: string) => {
@@ -931,11 +1083,15 @@ const App: React.FC = () => {
     }
     const itemDoc = doc(db, "items", id);
     try {
-        await updateDoc(itemDoc, { completed: !itemToToggle.completed });
+        const isNowCompleted = !itemToToggle.completed;
+        await updateDoc(itemDoc, { 
+            completed: isNowCompleted,
+            completedBy: isNowCompleted ? activeUser : null 
+        });
     } catch(error) {
         console.error("Error al actualizar documento: ", error);
     }
-  }, [items]);
+  }, [items, activeUser]);
 
   const handleDeleteItem = useCallback(async (id: string) => {
     const itemDoc = doc(db, "items", id);
@@ -943,6 +1099,15 @@ const App: React.FC = () => {
         await deleteDoc(itemDoc);
     } catch(error) {
         console.error("Error al eliminar documento: ", error);
+    }
+  }, []);
+
+  const handleUpdateItemPrice = useCallback(async (id: string, newPrice: number) => {
+    const itemDoc = doc(db, "items", id);
+    try {
+        await updateDoc(itemDoc, { price: newPrice });
+    } catch(error) {
+        console.error("Error al actualizar precio del documento: ", error);
     }
   }, []);
 
@@ -955,9 +1120,9 @@ const App: React.FC = () => {
     try {
       const batch = writeBatch(db);
       const itemsCollection = collection(db, "items");
-      initialItems.forEach(item => {
+      initialItems.forEach((item) => {
         const docRef = doc(itemsCollection); 
-        batch.set(docRef, { ...item, completed: false });
+        batch.set(docRef, { ...item, completed: false, completedBy: null });
       });
       await batch.commit();
     } catch (error) {
@@ -986,6 +1151,36 @@ const App: React.FC = () => {
       }
     };
   }, [items, budget]);
+  
+  const categoryProgressStats = useMemo(() => {
+    const statsByCategory = CATEGORIES.reduce((acc, category) => {
+        acc[category.id] = {
+            completed: 0,
+            total: 0,
+            name: category.name,
+            icon: category.icon,
+            felipe: 0,
+            valeria: 0,
+        };
+        return acc;
+    }, {} as Record<Category, { completed: number; total: number; name: string; icon: React.FC<{className?: string}>; felipe: number; valeria: number; }>);
+
+    items.forEach(item => {
+        if (statsByCategory[item.category]) {
+            statsByCategory[item.category].total += 1;
+            if (item.completed) {
+                statsByCategory[item.category].completed += 1;
+                if (item.completedBy === User.FELIPE) {
+                    statsByCategory[item.category].felipe += 1;
+                } else if (item.completedBy === User.VALERIA) {
+                    statsByCategory[item.category].valeria += 1;
+                }
+            }
+        }
+    });
+
+    return Object.values(statsByCategory);
+  }, [items]);
   
   const [activeFilter, setActiveFilter] = useState<string>('Todos');
 
@@ -1019,6 +1214,8 @@ const App: React.FC = () => {
         
         <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 my-6">
           <Dashboard stats={stats} />
+          <hr className="my-6 border-slate-200" />
+          <CategoryProgress stats={categoryProgressStats} />
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 my-6">
@@ -1063,6 +1260,7 @@ const App: React.FC = () => {
                items={filteredItems}
                onToggle={handleToggleItem}
                onDelete={handleDeleteItem}
+               onUpdatePrice={handleUpdateItemPrice}
              />
            )}
         </div>
