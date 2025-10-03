@@ -33,7 +33,7 @@
 </head>
   <body class="bg-[#F0F4F8]">
     <div id="root"></div>
-    <!-- Se cambia el tipo de script a "text/babel" para que Babel lo procese -->
-    <script type="text/babel" data-type="module" src="/index.tsx"></script>
+    <!-- Se actualiza el script para que Babel sepa cómo transpilar React y TypeScript -->
+    <script type="text/babel" data-presets="react,typescript" data-type="module" src="/index.tsx"></script>
   </body>
 </html>
