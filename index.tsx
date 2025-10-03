@@ -414,7 +414,13 @@ const UserSwitcher: React.FC<{ currentUser: User; onUserChange: (user: User) => 
   );
 };
 
-const Dashboard: React.FC<{ items: Item[]; totalBudget: number; onUpdateBudget: (newBudget: number) => void; }> = ({ items, totalBudget, onUpdateBudget }) => {
+const Dashboard: React.FC<{ 
+    items: Item[]; 
+    totalBudget: number; 
+    onUpdateBudget: (newBudget: number) => void;
+    setRelevanceFilters: (filters: Set<Relevance>) => void;
+    setStatusFilter: (status: 'Pendientes' | 'Completados' | 'Todos') => void;
+}> = ({ items, totalBudget, onUpdateBudget, setRelevanceFilters, setStatusFilter }) => {
     const [isEditingBudget, setIsEditingBudget] = useState(false);
     const [editedBudget, setEditedBudget] = useState('');
 
@@ -465,28 +471,54 @@ const Dashboard: React.FC<{ items: Item[]; totalBudget: number; onUpdateBudget: 
         setEditedBudget(new Intl.NumberFormat('es-CL').format(totalBudget));
         setIsEditingBudget(false);
     };
+    
+    const handleRelevanceClick = (relevance: Relevance) => {
+        setRelevanceFilters(new Set([relevance]));
+        setStatusFilter('Todos');
+    };
+
+    const radius = 50;
+    const circumference = Math.PI * radius;
+    const strokeDashoffset = circumference * (1 - progress);
 
     return (
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section className="grid grid-cols-1 gap-4">
             {/* Progreso General */}
-            <div className="bg-[#EFF6FF] p-5 rounded-xl shadow-sm">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Progreso General</h3>
-                <div className="flex items-baseline space-x-2">
-                    <span className="text-4xl font-bold text-gray-800">{completedItems}</span>
-                    <span className="text-2xl font-medium text-gray-400">/ {totalItems}</span>
-                </div>
-                <div className="mt-4 bg-gray-200 rounded-full h-2.5">
-                    <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${progress * 100}%` }}></div>
+            <div className="bg-white p-6 rounded-2xl shadow-md text-center">
+                <h3 className="text-lg font-bold text-gray-700 mb-4">Progreso General</h3>
+                <div className="relative w-48 h-24 mx-auto">
+                    <svg className="w-full h-full" viewBox="0 0 120 60">
+                        <path
+                            d="M 10 55 A 50 50 0 0 1 110 55"
+                            fill="none"
+                            stroke="#F3F4F6"
+                            strokeWidth="12"
+                            strokeLinecap="round"
+                        />
+                        <path
+                            d="M 10 55 A 50 50 0 0 1 110 55"
+                            fill="none"
+                            stroke="#4F46E5"
+                            strokeWidth="12"
+                            strokeLinecap="round"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={strokeDashoffset}
+                            style={{ transition: 'stroke-dashoffset 0.5s ease-out' }}
+                        />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center -mt-2">
+                        <span className="text-3xl font-bold text-gray-800">{completedItems}/{totalItems}</span>
+                    </div>
                 </div>
             </div>
 
             {/* Presupuesto */}
-            <div className="bg-[#F0FDF4] p-5 rounded-xl shadow-sm">
-                <div className="flex justify-between items-start">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Presupuesto</h3>
+            <div className="bg-white p-6 rounded-2xl shadow-md">
+                <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-lg font-bold text-gray-700">Presupuesto</h3>
                     {!isEditingBudget && (
-                        <button onClick={() => setIsEditingBudget(true)} className="text-gray-400 hover:text-indigo-600 p-1 rounded-full hover:bg-green-100/50 -mt-1 -mr-1" aria-label="Editar presupuesto">
-                            <PencilIcon className="h-4 w-4" />
+                        <button onClick={() => setIsEditingBudget(true)} className="text-gray-400 hover:text-indigo-600 p-1 rounded-full hover:bg-gray-100" aria-label="Editar presupuesto">
+                            <PencilIcon className="h-5 w-5" />
                         </button>
                     )}
                 </div>
@@ -502,7 +534,7 @@ const Dashboard: React.FC<{ items: Item[]; totalBudget: number; onUpdateBudget: 
                                     if (e.key === 'Enter') handleSaveBudget();
                                     if (e.key === 'Escape') handleCancelBudget();
                                 }}
-                                className="w-full pl-7 pr-2 py-1 text-2xl font-bold text-green-800 bg-green-50/50 border border-green-200 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                className="w-full pl-7 pr-2 py-1 text-2xl font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                                 autoFocus
                             />
                         </div>
@@ -516,35 +548,71 @@ const Dashboard: React.FC<{ items: Item[]; totalBudget: number; onUpdateBudget: 
                         </div>
                     </div>
                 ) : (
-                    <>
-                        <p className="text-2xl font-bold text-green-800">${formatCurrency(completedCost)} / ${formatCurrency(totalBudget)}</p>
-                        <p className="text-sm font-medium text-gray-600 mt-2">Resta: ${formatCurrency(totalBudget - completedCost)}</p>
-                    </>
+                    <div>
+                        <p className="text-3xl font-bold text-gray-800">${formatCurrency(completedCost)} / ${formatCurrency(totalBudget)}</p>
+                        <p className="text-sm font-medium text-gray-500 mt-1">Resta: ${formatCurrency(totalBudget - completedCost)}</p>
+                         <div className="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                            <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${totalBudget > 0 ? (completedCost / totalBudget) * 100 : 0}%` }}></div>
+                        </div>
+                    </div>
                 )}
             </div>
 
             {/* Relevancia */}
-            <div className="bg-[#FEFCE8] p-5 rounded-xl shadow-sm">
-                <h3 className="text-sm font-medium text-gray-500 mb-4">Relevancia</h3>
-                <div className="flex justify-around items-center text-center">
-                    <div>
-                        <p className="text-3xl font-bold text-red-500">
-                           {relevanceStats[Relevance.HIGH].completed}<span className="text-2xl font-normal text-gray-400">/{relevanceStats[Relevance.HIGH].total}</span>
-                        </p>
-                        <p className="text-xs font-semibold text-red-500">Alta</p>
-                    </div>
-                    <div>
-                        <p className="text-3xl font-bold text-yellow-500">
-                            {relevanceStats[Relevance.MEDIUM].completed}<span className="text-2xl font-normal text-gray-400">/{relevanceStats[Relevance.MEDIUM].total}</span>
-                        </p>
-                        <p className="text-xs font-semibold text-yellow-500">Media</p>
-                    </div>
-                    <div>
-                        <p className="text-3xl font-bold text-blue-500">
-                             {relevanceStats[Relevance.LOW].completed}<span className="text-2xl font-normal text-gray-400">/{relevanceStats[Relevance.LOW].total}</span>
-                        </p>
-                        <p className="text-xs font-semibold text-blue-500">Baja</p>
-                    </div>
+            <div className="bg-white p-6 rounded-2xl shadow-md">
+                <h3 className="text-lg font-bold text-gray-700 mb-4">Relevancia</h3>
+                <div className="space-y-4">
+                    <button onClick={() => handleRelevanceClick(Relevance.HIGH)} className="w-full text-left p-2 rounded-lg transition-all hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-300">
+                        <div className="flex justify-between items-baseline mb-1">
+                            <span className="font-semibold text-red-700">Alta</span>
+                            <span className="font-mono text-sm text-gray-600">
+                                {relevanceStats[Relevance.HIGH].completed}/{relevanceStats[Relevance.HIGH].total}
+                            </span>
+                        </div>
+                        <div className="w-full bg-red-100 rounded-full h-2.5">
+                            <div 
+                                className="bg-red-500 h-2.5 rounded-full" 
+                                style={{ 
+                                    width: `${relevanceStats[Relevance.HIGH].total > 0 ? (relevanceStats[Relevance.HIGH].completed / relevanceStats[Relevance.HIGH].total) * 100 : 0}%`, 
+                                    transition: 'width 0.5s ease-in-out' 
+                                }}
+                            ></div>
+                        </div>
+                    </button>
+                    <button onClick={() => handleRelevanceClick(Relevance.MEDIUM)} className="w-full text-left p-2 rounded-lg transition-all hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                        <div className="flex justify-between items-baseline mb-1">
+                            <span className="font-semibold text-yellow-700">Media</span>
+                            <span className="font-mono text-sm text-gray-600">
+                                {relevanceStats[Relevance.MEDIUM].completed}/{relevanceStats[Relevance.MEDIUM].total}
+                            </span>
+                        </div>
+                        <div className="w-full bg-yellow-100 rounded-full h-2.5">
+                            <div 
+                                className="bg-yellow-500 h-2.5 rounded-full" 
+                                style={{ 
+                                    width: `${relevanceStats[Relevance.MEDIUM].total > 0 ? (relevanceStats[Relevance.MEDIUM].completed / relevanceStats[Relevance.MEDIUM].total) * 100 : 0}%`, 
+                                    transition: 'width 0.5s ease-in-out' 
+                                }}
+                            ></div>
+                        </div>
+                    </button>
+                    <button onClick={() => handleRelevanceClick(Relevance.LOW)} className="w-full text-left p-2 rounded-lg transition-all hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        <div className="flex justify-between items-baseline mb-1">
+                            <span className="font-semibold text-blue-700">Baja</span>
+                            <span className="font-mono text-sm text-gray-600">
+                                {relevanceStats[Relevance.LOW].completed}/{relevanceStats[Relevance.LOW].total}
+                            </span>
+                        </div>
+                        <div className="w-full bg-blue-100 rounded-full h-2.5">
+                            <div 
+                                className="bg-blue-500 h-2.5 rounded-full" 
+                                style={{ 
+                                    width: `${relevanceStats[Relevance.LOW].total > 0 ? (relevanceStats[Relevance.LOW].completed / relevanceStats[Relevance.LOW].total) * 100 : 0}%`, 
+                                    transition: 'width 0.5s ease-in-out' 
+                                }}
+                            ></div>
+                        </div>
+                    </button>
                 </div>
             </div>
         </section>
@@ -568,7 +636,7 @@ const ProgressBySpace: React.FC<{ items: Item[]; onCategoryClick: (category: Cat
     }, [items]);
 
     return (
-        <section className="mt-6 mb-4">
+        <section className="mt-6 mb-2">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Progreso por Espacio</h2>
             <div className="flex space-x-4 overflow-x-auto pb-4 horizontal-scroll-cards" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {CATEGORIES
@@ -869,7 +937,7 @@ const FormularioAgregarItem: React.FC<{ onAddItem: (item: Omit<Item, 'id' | 'com
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm mb-6 border border-gray-200">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
                 <PlusCircleIcon className="h-6 w-6 mr-2 text-gray-400" />
                 Agregar Item Manualmente
@@ -1214,22 +1282,31 @@ const App: React.FC = () => {
     
     return (
         <div className="min-h-screen">
-            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-                 <div className="flex flex-col items-center pt-6 pb-2">
-                    <HouseIcon className="h-7 w-7 text-green-500" />
-                    <h1 className="mt-2 text-2xl font-bold text-gray-800 tracking-tight text-center">Amoblando Nuestra Casa</h1>
+             <header className="bg-gray-100/80 backdrop-blur-sm sticky top-0 z-10 py-3 px-4 shadow-sm">
+                <div className="max-w-4xl mx-auto flex items-center space-x-3">
+                    <HouseIcon className="h-6 w-6 text-gray-700" />
+                    <h1 className="text-lg font-bold text-gray-800">Tu Hogar Checklist</h1>
                 </div>
+            </header>
+
+            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
                  <div className="flex justify-center mb-6">
                     <UserSwitcher currentUser={currentUser} onUserChange={setCurrentUser} />
                 </div>
                 
-                <div className="bg-white p-6 rounded-xl shadow-sm my-6 border border-gray-200">
-                    <Dashboard items={items} totalBudget={totalBudget} onUpdateBudget={handleUpdateBudget} />
+                <div className="mb-6">
+                    <Dashboard 
+                        items={items} 
+                        totalBudget={totalBudget} 
+                        onUpdateBudget={handleUpdateBudget}
+                        setRelevanceFilters={setRelevanceFilters}
+                        setStatusFilter={setStatusFilter}
+                    />
                 </div>
                 
                 <ProgressBySpace items={items} onCategoryClick={setViewingCategory} />
 
-                <div className="mb-6">
+                <div className="mt-4">
                   <FormularioAgregarItem onAddItem={handleAddItem} />
                 </div>
                 <div className="my-6">
