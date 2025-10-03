@@ -1,0 +1,5 @@
+{
+  "name": "Lista de Compras Inteligente",
+  "description": "Una aplicación inteligente para gestionar tus listas de compras del hogar, potenciada por Gemini para categorizar artículos automáticamente.",
+  "requestFramePermissions": []
+}
