@@ -1,7 +1,9 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { GoogleGenAI, Type } from "@google/genai";
-import { initializeApp } from 'firebase/app';
+// FIX: Changed import path to use scoped @firebase packages, which is a common setup and can resolve module loading issues.
+import { initializeApp } from '@firebase/app';
 import { 
     getFirestore, 
     collection, 
@@ -14,8 +16,9 @@ import {
     updateDoc, 
     deleteDoc, 
     writeBatch,
-    serverTimestamp
-} from 'firebase/firestore';
+    serverTimestamp,
+    getDoc
+} from '@firebase/firestore';
 
 
 // =================================================================================
@@ -54,8 +57,8 @@ export interface Item {
   quantity: number;
   completed: boolean;
   completedBy?: User | null;
-  createdAt?: any; // Firestore Timestamp
-  completedAt?: any; // Firestore Timestamp
+  createdAt?: any; // Can be serverTimestamp() on write, Date on read.
+  completedAt?: any; // Can be serverTimestamp() on write, Date on read.
   addedBy?: User;
 }
 
@@ -319,11 +322,13 @@ const firebaseConfig = {
   messagingSenderId: "615469691845",
   appId: "1:615469691845:web:27c56ecd5d0a3df3b851ac"
 };
+// FIX: Initialize Firebase using the imported `initializeApp` function.
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // Gemini Service
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+// FIX: Removed unnecessary 'as string' type assertion for the API key.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export interface SuggestedItemResponse {
   name: string;
@@ -351,7 +356,8 @@ const getSuggestions = async (category: Category): Promise<SuggestedItemResponse
       type: Type.OBJECT,
       properties: {
         name: { type: Type.STRING, description: "Nombre del item sugerido." },
-        relevance: { type: Type.STRING, enum: Object.values(Relevance), description: "Relevancia del item." },
+        // FIX: Removed unsupported 'enum' property from the response schema and improved description.
+        relevance: { type: Type.STRING, description: "Relevancia del item (posibles valores: 'Alta', 'Media', 'Baja')." },
         price: { type: Type.INTEGER, description: "Precio estimado en CLP." },
       },
       required: ["name", "relevance", "price"],
@@ -697,10 +703,15 @@ const ProgressBySpace: React.FC<{ items: Item[]; onCategoryClick: (category: Cat
     );
 };
 
-const RecentlyAdded: React.FC<{ items: Item[] }> = ({ items }) => {
-    const formatRelativeTime = (timestamp: any) => {
-        if (!timestamp || !timestamp.toDate) return 'Justo ahora';
-        const date = timestamp.toDate();
+interface Activity {
+  type: 'added' | 'completed';
+  item: Item;
+  date: Date;
+}
+
+const ActivityFeed: React.FC<{ activities: Activity[] }> = ({ activities }) => {
+    const formatRelativeTime = (date: Date) => {
+        if (!date || !(date instanceof Date)) return 'Hace un momento';
         const now = new Date();
         const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
@@ -727,29 +738,41 @@ const RecentlyAdded: React.FC<{ items: Item[] }> = ({ items }) => {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
                 <ClockIcon className="h-6 w-6 mr-2 text-gray-400" />
-                Agregados Recientemente
+                Actividad Reciente
             </h2>
-            {items.length > 0 ? (
+            {activities.length > 0 ? (
                  <ul className="space-y-2">
-                    {items.map(item => (
-                        <li key={item.id} className="flex items-start space-x-3 p-2 rounded-lg transition-colors hover:bg-gray-50">
+                    {activities.map(activity => {
+                        const { type, item, date } = activity;
+                        const user = type === 'added' ? item.addedBy : item.completedBy;
+                        const actionText = type === 'added' ? 'agregó' : 'completó';
+                        const userColor = user === User.VALERIA ? 'text-pink-600' : 'text-indigo-600';
+
+                        return (
+                        <li key={`${item.id}-${type}-${date.getTime()}`} className="flex items-start space-x-3 p-2 rounded-lg transition-colors hover:bg-gray-50">
                             <div className="flex-shrink-0 pt-1">
-                               <UserIcon className={`h-5 w-5 rounded-full p-0.5 ${item.addedBy === User.VALERIA ? 'text-pink-500 bg-pink-100' : 'text-indigo-500 bg-indigo-100'}`} />
+                                {type === 'added' ? (
+                                    <UserIcon className={`h-5 w-5 rounded-full p-0.5 ${user === User.VALERIA ? 'text-pink-500 bg-pink-100' : 'text-indigo-500 bg-indigo-100'}`} />
+                                ) : (
+                                    <div className={`h-5 w-5 rounded-full flex items-center justify-center ${user === User.VALERIA ? 'bg-pink-500' : 'bg-indigo-600'}`}>
+                                        <CheckIcon className="h-3 w-3 text-white" />
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <p className="text-sm text-gray-600">
-                                    <span className={`font-semibold ${item.addedBy === User.VALERIA ? 'text-pink-600' : 'text-indigo-600'}`}>{item.addedBy || 'Alguien'}</span>
-                                    {' '}agregó{' '}
+                                    <span className={`font-semibold ${userColor}`}>{user || 'Alguien'}</span>
+                                    {' '}{actionText}{' '}
                                     <span className="font-semibold text-gray-800">{item.name}</span>
                                 </p>
-                                <p className="text-xs text-gray-400 mt-0.5">{formatRelativeTime(item.createdAt)}</p>
+                                <p className="text-xs text-gray-400 mt-0.5">{formatRelativeTime(date)}</p>
                             </div>
                         </li>
-                    ))}
+                    )})}
                 </ul>
             ) : (
                 <div className="text-center text-gray-500 py-4 border-t border-gray-200 mt-4">
-                    <p>No se han agregado items recientemente.</p>
+                    <p>No hay actividad reciente.</p>
                 </div>
             )}
         </div>
@@ -811,7 +834,7 @@ const CategoryItemsModal: React.FC<{
 
 const EditItemModal: React.FC<{
     item: Item;
-    onUpdate: (item: Item) => void;
+    onUpdate: (id: string, dataToUpdate: { name: string; price: number; category: Category; relevance: Relevance; quantity: number; }) => void;
     onClose: () => void;
 }> = ({ item, onUpdate, onClose }) => {
     const [name, setName] = useState(item.name);
@@ -824,14 +847,14 @@ const EditItemModal: React.FC<{
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (name && price && category) {
-            onUpdate({
-                ...item,
+            const dataToUpdate = {
                 name,
                 price: parseInt(price.replace(/\./g, ''), 10),
                 category,
                 relevance,
                 quantity: parseInt(quantity, 10) || 1
-            });
+            };
+            onUpdate(item.id, dataToUpdate);
             onClose();
         }
     };
@@ -976,6 +999,8 @@ const EnterPriceModal: React.FC<{
         }
     };
 
+    const isConfirmDisabled = price === '';
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-sm m-4 text-center animate-scale-up">
@@ -995,7 +1020,7 @@ const EnterPriceModal: React.FC<{
                             value={price}
                             onChange={handlePriceChange}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleConfirm();
+                                if (e.key === 'Enter' && !isConfirmDisabled) handleConfirm();
                                 if (e.key === 'Escape') onClose();
                             }}
                             placeholder="0"
@@ -1014,7 +1039,7 @@ const EnterPriceModal: React.FC<{
                     </button>
                     <button
                         onClick={handleConfirm}
-                        disabled={!price}
+                        disabled={isConfirmDisabled}
                         className="px-6 py-2 text-base font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:bg-indigo-300"
                     >
                         Confirmar y Completar
@@ -1307,9 +1332,9 @@ const Filters: React.FC<{
             {/* Filter Pills */}
             <div className="mt-4 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
+                    <button onClick={() => { setStatusFilter('Todos'); setRelevanceFilters(new Set()); }} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Todos' && relevanceFilters.size === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Ver Todos</button>
                     <button onClick={() => setStatusFilter('Pendientes')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Pendientes' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Pendientes</button>
                     <button onClick={() => setStatusFilter('Completados')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Completados' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Completados</button>
-                    <button onClick={() => { setStatusFilter('Todos'); setRelevanceFilters(new Set()); }} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Todos' && relevanceFilters.size === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Ver Todos</button>
                 </div>
                  <div className="flex flex-wrap items-center gap-2">
                     {relevanceFilterConfig.map(rel => (
@@ -1348,48 +1373,73 @@ const App: React.FC = () => {
     const [itemRequiringPrice, setItemRequiringPrice] = useState<Item | null>(null);
 
     // Filter states
-    const [statusFilter, setStatusFilter] = useState<'Pendientes' | 'Completados' | 'Todos'>('Pendientes');
+    const [statusFilter, setStatusFilter] = useState<'Pendientes' | 'Completados' | 'Todos'>('Todos');
     const [relevanceFilters, setRelevanceFilters] = useState<Set<Relevance>>(new Set());
     const [activeCategory, setActiveCategory] = useState<Category | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
-      const itemsQuery = query(collection(db, 'items'), orderBy('createdAt', 'desc'));
-      const unsubscribe = onSnapshot(itemsQuery, (querySnapshot) => {
-        const itemsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
-        setItems(itemsData);
-        setLoading(false);
+        const seedData = async () => {
+            const seedRef = doc(db, 'app_config', 'initial_seed');
+            const seedDoc = await getDoc(seedRef);
 
-        if (itemsData.length === 0) {
-            const batch = writeBatch(db);
-            const itemsCol = collection(db, 'items');
-            initialItems.forEach(item => {
-                const docRef = doc(itemsCol);
-                batch.set(docRef, { 
-                    ...item, 
-                    completed: false, 
-                    completedBy: null,
-                    createdAt: serverTimestamp(),
-                    addedBy: User.FELIPE // Default user for initial seed
+            if (!seedDoc.exists()) {
+                console.log("First time setup: Seeding initial data...");
+                const batch = writeBatch(db);
+                const itemsCol = collection(db, 'items');
+                initialItems.forEach(item => {
+                    const docRef = doc(itemsCol);
+                    batch.set(docRef, { 
+                        ...item, 
+                        completed: false, 
+                        completedBy: null,
+                        createdAt: serverTimestamp(),
+                        addedBy: User.FELIPE 
+                    });
                 });
-            });
-            batch.commit();
-        }
-      });
-      return () => unsubscribe();
-    }, []);
+                batch.set(seedRef, { seeded: true, timestamp: serverTimestamp() });
+                await batch.commit();
+            }
+        };
 
-    useEffect(() => {
+        seedData();
+
+        const itemsQuery = query(collection(db, 'items'), orderBy('createdAt', 'desc'));
+        const unsubscribeItems = onSnapshot(itemsQuery, (querySnapshot) => {
+            const itemsData = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                // Normalize timestamps at the source to prevent downstream errors.
+                // The optional chaining (?.) handles cases where the field is null or not a timestamp object yet.
+                const item: Item = {
+                    ...(data as Omit<Item, 'id'>),
+                    id: doc.id,
+                    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null,
+                    completedAt: data.completedAt?.toDate ? data.completedAt.toDate() : null,
+                };
+                return item;
+            });
+            setItems(itemsData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error listening to items collection:", error);
+            setLoading(false);
+        });
+
         const budgetDocRef = doc(db, 'app_config', 'budget');
-        const unsubscribe = onSnapshot(budgetDocRef, (docSnap) => {
+        const unsubscribeBudget = onSnapshot(budgetDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 setTotalBudget(docSnap.data()?.total || 5000000);
             } else {
                 setDoc(budgetDocRef, { total: 5000000 });
             }
         });
-        return () => unsubscribe();
+
+        return () => {
+            unsubscribeItems();
+            unsubscribeBudget();
+        };
     }, []);
+
 
     const handleAddItem = async (item: Omit<Item, 'id' | 'completed' | 'completedBy' | 'createdAt' | 'addedBy' | 'completedAt'>) => {
         try {
@@ -1428,6 +1478,7 @@ const App: React.FC = () => {
 
     const handlePriceAndComplete = async (item: Item, price: number) => {
         const itemRef = doc(db, 'items', item.id);
+        setItemRequiringPrice(null); 
         try {
             await updateDoc(itemRef, {
                 price: price,
@@ -1435,12 +1486,10 @@ const App: React.FC = () => {
                 completedBy: currentUser,
                 completedAt: serverTimestamp()
             });
-            setItemRequiringPrice(null); // Close modal
         } catch (error) {
             console.error("Error updating price and completing item: ", error);
         }
     };
-
 
     const handleUpdateBudget = async (newBudget: number) => {
         const budgetDocRef = doc(db, 'app_config', 'budget');
@@ -1451,12 +1500,11 @@ const App: React.FC = () => {
         }
     };
 
-    const handleUpdateItem = async (updatedItem: Item) => {
-        const { id, ...dataToUpdate } = updatedItem;
+    const handleUpdateItem = async (id: string, dataToUpdate: { name: string; price: number; category: Category; relevance: Relevance; quantity: number; }) => {
         const itemRef = doc(db, 'items', id);
         try {
             await updateDoc(itemRef, dataToUpdate);
-            setEditingItem(null); // Close modal
+            setEditingItem(null);
         } catch (error) {
             console.error("Error updating item: ", error);
         }
@@ -1470,6 +1518,33 @@ const App: React.FC = () => {
             } catch (error) {
                 console.error("Error deleting item: ", error);
             }
+        }
+    };
+
+    const handleSeedData = async () => {
+        setLoading(true);
+        try {
+            const batch = writeBatch(db);
+            const itemsCol = collection(db, 'items');
+            initialItems.forEach(item => {
+                const docRef = doc(itemsCol);
+                batch.set(docRef, { 
+                    ...item, 
+                    completed: false, 
+                    completedBy: null,
+                    createdAt: serverTimestamp(),
+                    completedAt: null,
+                    addedBy: currentUser
+                });
+            });
+            
+            const seedRef = doc(db, 'app_config', 'initial_seed');
+            batch.set(seedRef, { seeded: true, timestamp: serverTimestamp() });
+
+            await batch.commit();
+        } catch (error) {
+            console.error("Error seeding data: ", error);
+            setLoading(false);
         }
     };
 
@@ -1498,14 +1573,32 @@ const App: React.FC = () => {
             });
     }, [preFilteredItems, activeCategory]);
 
-    const recentlyAddedItems = useMemo(() => {
-        return [...items]
-            .sort((a, b) => {
-                const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
-                const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
-                return timeB - timeA;
-            })
-            .slice(0, 5);
+    const activityFeedItems = useMemo(() => {
+        const activities: Activity[] = [];
+
+        items.forEach(item => {
+            // Because timestamps are normalized in the onSnapshot listener,
+            // we can reliably check if they are valid Date objects.
+            if (item.createdAt && item.createdAt instanceof Date) {
+                activities.push({
+                    type: 'added',
+                    item,
+                    date: item.createdAt,
+                });
+            }
+
+            if (item.completed && item.completedAt && item.completedAt instanceof Date) {
+                activities.push({
+                    type: 'completed',
+                    item,
+                    date: item.completedAt,
+                });
+            }
+        });
+
+        return activities
+            .sort((a, b) => b.date.getTime() - a.date.getTime())
+            .slice(0, 7);
     }, [items]);
 
     const categoryCounts = useMemo(() => {
@@ -1543,7 +1636,7 @@ const App: React.FC = () => {
                 </div>
                 
                 <div className="mb-6">
-                    <RecentlyAdded items={recentlyAddedItems} />
+                    <ActivityFeed activities={activityFeedItems} />
                 </div>
 
                 <ProgressBySpace items={items} onCategoryClick={setViewingCategory} />
@@ -1569,18 +1662,48 @@ const App: React.FC = () => {
                 {loading ? (
                     <div className="flex justify-center items-center h-64"><Loader size="h-12 w-12" /></div>
                 ) : (
-                    <ul className="space-y-3 pb-8">
-                        {filteredItems.map(item => (
-                            <ItemCompra 
-                                key={item.id}
-                                item={item}
-                                onToggleComplete={(id, completed, name) => setConfirmingToggle({ id, completed, name })}
-                                onRequestPrice={setItemRequiringPrice}
-                                onEdit={setEditingItem}
-                                onDelete={handleDeleteItem}
-                            />
-                        ))}
-                    </ul>
+                    <>
+                        {items.length === 0 ? (
+                            <div className="text-center py-16 px-6 bg-white rounded-lg shadow-sm mt-4 border border-gray-200">
+                                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                                <h3 className="mt-2 text-lg font-semibold text-gray-800">Tu lista está vacía</h3>
+                                <p className="mt-1 text-sm text-gray-500">Comienza agregando un item o carga la lista de sugerencias inicial.</p>
+                                <div className="mt-6">
+                                    <button
+                                        type="button"
+                                        onClick={handleSeedData}
+                                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                    >
+                                        <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
+                                        Cargar lista inicial
+                                    </button>
+                                </div>
+                            </div>
+                        ) : filteredItems.length > 0 ? (
+                            <ul className="space-y-3 pb-8">
+                                {filteredItems.map(item => (
+                                    <ItemCompra 
+                                        key={item.id}
+                                        item={item}
+                                        onToggleComplete={(id, completed, name) => setConfirmingToggle({ id, completed, name })}
+                                        onRequestPrice={setItemRequiringPrice}
+                                        onEdit={setEditingItem}
+                                        onDelete={handleDeleteItem}
+                                    />
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="text-center py-16 px-6 bg-white rounded-lg shadow-sm mt-4 border border-gray-200">
+                                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <h3 className="mt-2 text-lg font-semibold text-gray-800">No se encontraron productos</h3>
+                                <p className="mt-1 text-sm text-gray-500">Intenta ajustar tu búsqueda o filtros para encontrar lo que buscas.</p>
+                            </div>
+                        )}
+                    </>
                 )}
             </main>
              {editingItem && (
