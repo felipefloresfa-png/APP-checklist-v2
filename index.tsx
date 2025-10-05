@@ -59,6 +59,9 @@ export interface Item {
   createdAt?: Date | null; // Always a Date or null in the app state.
   completedAt?: Date | null; // Always a Date or null in the app state.
   addedBy?: User;
+  deleted?: boolean;
+  deletedBy?: User | null;
+  deletedAt?: Date | null;
 }
 
 export interface SuggestedItem {
@@ -703,7 +706,7 @@ const ProgressBySpace: React.FC<{ items: Item[]; onCategoryClick: (category: Cat
 };
 
 interface Activity {
-  type: 'added' | 'completed';
+  type: 'added' | 'completed' | 'deleted';
   item: Item;
   date: Date;
 }
@@ -743,8 +746,8 @@ const ActivityFeed: React.FC<{ activities: Activity[] }> = ({ activities }) => {
                  <ul className="space-y-2">
                     {activities.map(activity => {
                         const { type, item, date } = activity;
-                        const user = type === 'added' ? item.addedBy : item.completedBy;
-                        const actionText = type === 'added' ? 'agregó' : 'completó';
+                        const user = type === 'added' ? item.addedBy : (type === 'completed' ? item.completedBy : item.deletedBy);
+                        const actionText = type === 'added' ? 'agregó' : (type === 'completed' ? 'completó' : 'eliminó');
                         const userColor = user === User.VALERIA ? 'text-pink-600' : 'text-indigo-600';
 
                         return (
@@ -752,9 +755,13 @@ const ActivityFeed: React.FC<{ activities: Activity[] }> = ({ activities }) => {
                             <div className="flex-shrink-0 pt-1">
                                 {type === 'added' ? (
                                     <UserIcon className={`h-5 w-5 rounded-full p-0.5 ${user === User.VALERIA ? 'text-pink-500 bg-pink-100' : 'text-indigo-500 bg-indigo-100'}`} />
-                                ) : (
+                                ) : type === 'completed' ? (
                                     <div className={`h-5 w-5 rounded-full flex items-center justify-center ${user === User.VALERIA ? 'bg-pink-500' : 'bg-indigo-600'}`}>
                                         <CheckIcon className="h-3 w-3 text-white" />
+                                    </div>
+                                ) : (
+                                    <div className="h-5 w-5 rounded-full flex items-center justify-center bg-red-100">
+                                        <TrashIcon className="h-3 w-3 text-red-600" />
                                     </div>
                                 )}
                             </div>
@@ -762,7 +769,7 @@ const ActivityFeed: React.FC<{ activities: Activity[] }> = ({ activities }) => {
                                 <p className="text-sm text-gray-600">
                                     <span className={`font-semibold ${userColor}`}>{user || 'Alguien'}</span>
                                     {' '}{actionText}{' '}
-                                    <span className="font-semibold text-gray-800">{item.name}</span>
+                                    <span className={`font-semibold ${type === 'deleted' ? 'line-through text-gray-700' : 'text-gray-800'}`}>{item.name}</span>
                                 </p>
                                 <p className="text-xs text-gray-400 mt-0.5">{formatRelativeTime(date)}</p>
                             </div>
@@ -833,7 +840,7 @@ const CategoryItemsModal: React.FC<{
 
 const EditItemModal: React.FC<{
     item: Item;
-    onUpdate: (id: string, dataToUpdate: { name: string; price: number; category: Category; relevance: Relevance; quantity: number; }) => void;
+    onUpdate: (id: string, dataToUpdate: { name: string; price: number; category: Category; relevance: Relevance; quantity: number; addedBy?: User; }) => void;
     onClose: () => void;
 }> = ({ item, onUpdate, onClose }) => {
     const [name, setName] = useState(item.name);
@@ -841,6 +848,7 @@ const EditItemModal: React.FC<{
     const [category, setCategory] = useState<Category>(item.category);
     const [relevance, setRelevance] = useState<Relevance>(item.relevance);
     const [quantity, setQuantity] = useState((item.quantity || 1).toString());
+    const [addedBy, setAddedBy] = useState<User | undefined>(item.addedBy);
 
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -851,7 +859,8 @@ const EditItemModal: React.FC<{
                 price: parseInt(price.replace(/\./g, ''), 10),
                 category,
                 relevance,
-                quantity: parseInt(quantity, 10) || 1
+                quantity: parseInt(quantity, 10) || 1,
+                addedBy
             };
             onUpdate(item.id, dataToUpdate);
             onClose();
@@ -879,25 +888,14 @@ const EditItemModal: React.FC<{
                             required
                         />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="editItemCategory" className="block text-sm font-medium text-gray-700">Espacio / Categoría *</label>
-                            <select id="editItemCategory" value={category} onChange={(e) => setCategory(e.target.value as Category)} required
-                                className="appearance-none mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
-                                style={selectArrowStyle}
-                            >
-                                {CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="editItemRelevance" className="block text-sm font-medium text-gray-700">Relevancia</label>
-                            <select id="editItemRelevance" value={relevance} onChange={(e) => setRelevance(e.target.value as Relevance)}
-                                className="appearance-none mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
-                                style={selectArrowStyle}
-                            >
-                                {Object.values(Relevance).map(rel => <option key={rel} value={rel}>{rel}</option>)}
-                            </select>
-                        </div>
+                    <div>
+                        <label htmlFor="editItemCategory" className="block text-sm font-medium text-gray-700">Espacio / Categoría *</label>
+                        <select id="editItemCategory" value={category} onChange={(e) => setCategory(e.target.value as Category)} required
+                            className="appearance-none mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                            style={selectArrowStyle}
+                        >
+                            {CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                        </select>
                     </div>
                      <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -934,6 +932,26 @@ const EditItemModal: React.FC<{
                                 className="mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
                                 required
                             />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="editItemRelevance" className="block text-sm font-medium text-gray-700">Relevancia</label>
+                            <select id="editItemRelevance" value={relevance} onChange={(e) => setRelevance(e.target.value as Relevance)}
+                                className="appearance-none mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                                style={selectArrowStyle}
+                            >
+                                {Object.values(Relevance).map(rel => <option key={rel} value={rel}>{rel}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="editItemAddedBy" className="block text-sm font-medium text-gray-700">Agregado por</label>
+                            <select id="editItemAddedBy" value={addedBy || ''} onChange={(e) => setAddedBy(e.target.value as User)}
+                                className="appearance-none mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                                style={selectArrowStyle}
+                            >
+                                {Object.values(User).map(user => <option key={user} value={user}>{user}</option>)}
+                            </select>
                         </div>
                     </div>
                     <button type="submit" className="w-full px-4 py-3 text-base font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">Guardar Cambios</button>
@@ -1514,6 +1532,7 @@ const App: React.FC = () => {
                     id: doc.id,
                     createdAt: toDate(data.createdAt),
                     completedAt: toDate(data.completedAt),
+                    deletedAt: toDate(data.deletedAt),
                 };
                 return item;
             });
@@ -1539,6 +1558,7 @@ const App: React.FC = () => {
         };
     }, []);
 
+    const visibleItems = useMemo(() => items.filter(item => !item.deleted), [items]);
 
     const handleAddItem = async (item: Omit<Item, 'id' | 'completed' | 'completedBy' | 'createdAt' | 'addedBy' | 'completedAt'>) => {
         try {
@@ -1599,7 +1619,7 @@ const App: React.FC = () => {
         }
     };
 
-    const handleUpdateItem = async (id: string, dataToUpdate: { name: string; price: number; category: Category; relevance: Relevance; quantity: number; }) => {
+    const handleUpdateItem = async (id: string, dataToUpdate: { name: string; price: number; category: Category; relevance: Relevance; quantity: number; addedBy?: User; }) => {
         const itemRef = doc(db, 'items', id);
         try {
             await updateDoc(itemRef, dataToUpdate);
@@ -1613,7 +1633,11 @@ const App: React.FC = () => {
         if (!deletingItemId) return;
         const itemRef = doc(db, 'items', deletingItemId);
         try {
-            await deleteDoc(itemRef);
+             await updateDoc(itemRef, {
+                deleted: true,
+                deletedBy: currentUser,
+                deletedAt: serverTimestamp()
+            });
         } catch (error) {
             console.error("Error deleting item: ", error);
         }
@@ -1670,7 +1694,11 @@ const App: React.FC = () => {
         const batch = writeBatch(db);
         selectedItems.forEach(id => {
             const itemRef = doc(db, 'items', id);
-            batch.delete(itemRef);
+            batch.update(itemRef, {
+                deleted: true,
+                deletedBy: currentUser,
+                deletedAt: serverTimestamp()
+            });
         });
 
         try {
@@ -1685,7 +1713,7 @@ const App: React.FC = () => {
     };
 
     const preFilteredItems = useMemo(() => {
-       return items
+       return visibleItems
             .filter(item => {
                 if (!searchQuery) return true;
                 return item.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -1699,7 +1727,7 @@ const App: React.FC = () => {
                 if (relevanceFilters.size === 0) return true;
                 return relevanceFilters.has(item.relevance);
             });
-    }, [items, statusFilter, relevanceFilters, searchQuery]);
+    }, [visibleItems, statusFilter, relevanceFilters, searchQuery]);
 
     const filteredItems = useMemo(() => {
         const sorted = [...preFilteredItems].sort((a, b) => a.name.localeCompare(b.name));
@@ -1713,8 +1741,6 @@ const App: React.FC = () => {
         const activities: Activity[] = [];
 
         items.forEach(item => {
-            // With robust `toDate` normalization, we can reliably check if `createdAt`
-            // is a valid Date object before pushing to the activity feed.
             if (item.createdAt instanceof Date) {
                 activities.push({
                     type: 'added',
@@ -1728,6 +1754,14 @@ const App: React.FC = () => {
                     type: 'completed',
                     item,
                     date: item.completedAt,
+                });
+            }
+
+            if (item.deleted && item.deletedAt instanceof Date) {
+                activities.push({
+                    type: 'deleted',
+                    item,
+                    date: item.deletedAt,
                 });
             }
         });
@@ -1768,7 +1802,7 @@ const App: React.FC = () => {
                 
                 <div className="mb-6">
                     <Dashboard 
-                        items={items} 
+                        items={visibleItems} 
                         totalBudget={totalBudget} 
                         onUpdateBudget={handleUpdateBudget}
                         setRelevanceFilters={setRelevanceFilters}
@@ -1780,7 +1814,7 @@ const App: React.FC = () => {
                     <ActivityFeed activities={activityFeedItems} />
                 </div>
 
-                <ProgressBySpace items={items} onCategoryClick={setViewingCategory} />
+                <ProgressBySpace items={visibleItems} onCategoryClick={setViewingCategory} />
 
                 <div className="mt-6">
                   <FormularioAgregarItem onAddItem={handleAddItem} />
@@ -1806,7 +1840,7 @@ const App: React.FC = () => {
                     <div className="flex justify-center items-center h-64"><Loader size="h-12 w-12" /></div>
                 ) : (
                     <>
-                        {items.length === 0 ? (
+                        {visibleItems.length === 0 ? (
                             <div className="text-center py-16 px-6 bg-white rounded-lg shadow-sm mt-4 border border-gray-200">
                                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -1862,7 +1896,7 @@ const App: React.FC = () => {
             {viewingCategory && (
                 <CategoryItemsModal
                     category={viewingCategory}
-                    items={items}
+                    items={visibleItems}
                     onClose={() => setViewingCategory(null)}
                 />
             )}
