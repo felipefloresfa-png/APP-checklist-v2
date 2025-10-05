@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { GoogleGenAI, Type } from "@google/genai";
@@ -57,8 +56,8 @@ export interface Item {
   quantity: number;
   completed: boolean;
   completedBy?: User | null;
-  createdAt?: any; // Can be serverTimestamp() on write, Date on read.
-  completedAt?: any; // Can be serverTimestamp() on write, Date on read.
+  createdAt?: Date | null; // Always a Date or null in the app state.
+  completedAt?: Date | null; // Always a Date or null in the app state.
   addedBy?: User;
 }
 
@@ -208,7 +207,7 @@ const RELEVANCE_STYLES: Record<Relevance, { bg: string; text: string, dot: strin
 // =================================================================================
 // --- FROM initialData.ts ---
 // =================================================================================
-const initialItems: Omit<Item, 'id' | 'completed' | 'completedBy'>[] = [
+const initialItems: Omit<Item, 'id' | 'completed' | 'completedBy' | 'createdAt' | 'completedAt'>[] = [
   // LAVANDERIA
   { name: 'Lavadora secadora', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 450000, quantity: 1 },
   { name: 'Repisa para detergentes', category: Category.LAUNDRY, relevance: Relevance.LOW, price: 25000, quantity: 1 },
@@ -1103,6 +1102,14 @@ const ItemCompra: React.FC<{
                             </span>
                         </div>
                     )}
+                    {item.completed && item.completedAt && (
+                         <div className="flex items-center space-x-1.5 whitespace-nowrap">
+                            <span className="text-gray-400">&bull;</span>
+                            <span className="text-xs font-medium text-gray-500">
+                                {new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short' }).format(item.completedAt)}.
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -1130,7 +1137,7 @@ const ItemCompra: React.FC<{
     );
 };
 
-const FormularioAgregarItem: React.FC<{ onAddItem: (item: Omit<Item, 'id' | 'completed' | 'completedBy' | 'createdAt' | 'addedBy'>) => void; }> = ({ onAddItem }) => {
+const FormularioAgregarItem: React.FC<{ onAddItem: (item: Omit<Item, 'id' | 'completed' | 'completedBy' | 'createdAt' | 'completedAt' | 'addedBy'>) => void; }> = ({ onAddItem }) => {
     const [name, setName] = useState('');
     const [category, setCategory] = useState<Category | ''>('');
     const [relevance, setRelevance] = useState<Relevance>(Relevance.MEDIUM);
@@ -1211,7 +1218,7 @@ const FormularioAgregarItem: React.FC<{ onAddItem: (item: Omit<Item, 'id' | 'com
     );
 };
 
-const SuggestionsSection: React.FC<{ onAddSuggestion: (item: Omit<Item, 'id'|'completed'|'completedBy' | 'createdAt' | 'addedBy'>) => void }> = ({ onAddSuggestion }) => {
+const SuggestionsSection: React.FC<{ onAddSuggestion: (item: Omit<Item, 'id'|'completed'|'completedBy' | 'createdAt' | 'completedAt' | 'addedBy'>) => void }> = ({ onAddSuggestion }) => {
     const [category, setCategory] = useState<Category>(Category.LIVING);
     const [suggestions, setSuggestions] = useState<SuggestedItemResponse[]>([]);
     const [loading, setLoading] = useState(false);
@@ -1362,6 +1369,28 @@ const Filters: React.FC<{
     );
 };
 
+// Helper to robustly convert Firestore Timestamps or existing Dates.
+const toDate = (timestamp: any): Date | null => {
+  if (!timestamp) {
+    return null;
+  }
+  // If it's already a JS Date, return it.
+  if (timestamp instanceof Date) {
+    return timestamp;
+  }
+  // If it's a Firestore Timestamp, convert it.
+  if (typeof timestamp.toDate === 'function') {
+    return timestamp.toDate();
+  }
+  // As a fallback for other potential date representations (e.g., from strings)
+  const d = new Date(timestamp);
+  if (!isNaN(d.getTime())) {
+      return d;
+  }
+  return null;
+};
+
+
 const App: React.FC = () => {
     const [items, setItems] = useState<Item[]>([]);
     const [loading, setLoading] = useState(true);
@@ -1408,13 +1437,12 @@ const App: React.FC = () => {
         const unsubscribeItems = onSnapshot(itemsQuery, (querySnapshot) => {
             const itemsData = querySnapshot.docs.map(doc => {
                 const data = doc.data();
-                // Normalize timestamps at the source to prevent downstream errors.
-                // The optional chaining (?.) handles cases where the field is null or not a timestamp object yet.
+                // Use the robust toDate helper to normalize timestamps consistently.
                 const item: Item = {
                     ...(data as Omit<Item, 'id'>),
                     id: doc.id,
-                    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null,
-                    completedAt: data.completedAt?.toDate ? data.completedAt.toDate() : null,
+                    createdAt: toDate(data.createdAt),
+                    completedAt: toDate(data.completedAt),
                 };
                 return item;
             });
@@ -1577,9 +1605,9 @@ const App: React.FC = () => {
         const activities: Activity[] = [];
 
         items.forEach(item => {
-            // Because timestamps are normalized in the onSnapshot listener,
-            // we can reliably check if they are valid Date objects.
-            if (item.createdAt && item.createdAt instanceof Date) {
+            // With robust `toDate` normalization, we can reliably check if `createdAt`
+            // is a valid Date object before pushing to the activity feed.
+            if (item.createdAt instanceof Date) {
                 activities.push({
                     type: 'added',
                     item,
@@ -1587,7 +1615,7 @@ const App: React.FC = () => {
                 });
             }
 
-            if (item.completed && item.completedAt && item.completedAt instanceof Date) {
+            if (item.completed && item.completedAt instanceof Date) {
                 activities.push({
                     type: 'completed',
                     item,
