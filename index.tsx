@@ -944,18 +944,20 @@ const EditItemModal: React.FC<{
 };
 
 const ConfirmationModal: React.FC<{
-    itemName: string;
-    actionText: string;
+    title: string;
+    children: React.ReactNode;
+    confirmText: string;
+    confirmButtonClass?: string;
     onConfirm: () => void;
     onCancel: () => void;
-}> = ({ itemName, actionText, onConfirm, onCancel }) => {
+}> = ({ title, children, confirmText, confirmButtonClass = 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500', onConfirm, onCancel }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-sm m-4 text-center animate-scale-up">
-                <h2 className="text-xl font-bold text-gray-800 mb-2">Confirmar Acción</h2>
-                <p className="text-gray-600 mb-6">
-                    ¿Estás seguro de que quieres marcar <span className="font-semibold text-gray-900">"{itemName}"</span> como {actionText}?
-                </p>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">{title}</h2>
+                <div className="text-gray-600 mb-6">
+                    {children}
+                </div>
                 <div className="flex justify-center space-x-4">
                     <button
                         onClick={onCancel}
@@ -965,9 +967,9 @@ const ConfirmationModal: React.FC<{
                     </button>
                     <button
                         onClick={onConfirm}
-                        className="px-6 py-2 text-base font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                        className={`px-6 py-2 text-base font-semibold text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${confirmButtonClass}`}
                     >
-                        Confirmar
+                        {confirmText}
                     </button>
                 </div>
             </div>
@@ -1052,11 +1054,14 @@ const EnterPriceModal: React.FC<{
 
 const ItemCompra: React.FC<{
     item: Item;
+    isSelectionMode: boolean;
+    isSelected: boolean;
+    onSelectItem: (id: string) => void;
     onToggleComplete: (id: string, completed: boolean, name: string) => void;
     onRequestPrice: (item: Item) => void;
     onEdit: (item: Item) => void;
     onDelete: (id: string) => void;
-}> = ({ item, onToggleComplete, onRequestPrice, onEdit, onDelete }) => {
+}> = ({ item, isSelectionMode, isSelected, onSelectItem, onToggleComplete, onRequestPrice, onEdit, onDelete }) => {
     const formatCurrency = (value: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
     const handleToggle = () => {
@@ -1076,14 +1081,26 @@ const ItemCompra: React.FC<{
     const quantity = item.quantity || 1;
 
     return (
-        <li className="group flex items-center p-3 bg-white rounded-xl shadow-sm border border-gray-100 transition-all duration-200">
-            <button
-                onClick={handleToggle}
-                className={`flex-shrink-0 h-10 w-10 rounded-full mr-4 flex items-center justify-center border-2 transition-colors duration-300 ${item.completed ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'}`}
-                aria-label={item.completed ? `Marcar "${item.name}" como pendiente` : `Marcar "${item.name}" como completado`}
-            >
-                {item.completed && <CheckIcon className="h-6 w-6 text-white" />}
-            </button>
+        <li className={`group flex items-center p-3 bg-white rounded-xl shadow-sm border transition-all duration-200 ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-100'}`}>
+            {isSelectionMode ? (
+                 <div className="flex-shrink-0 h-10 w-10 mr-4 flex items-center justify-center">
+                     <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => onSelectItem(item.id)}
+                        className="h-6 w-6 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        aria-label={`Seleccionar ${item.name}`}
+                    />
+                </div>
+            ) : (
+                <button
+                    onClick={handleToggle}
+                    className={`flex-shrink-0 h-10 w-10 rounded-full mr-4 flex items-center justify-center border-2 transition-colors duration-300 ${item.completed ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'}`}
+                    aria-label={item.completed ? `Marcar "${item.name}" como pendiente` : `Marcar "${item.name}" como completado`}
+                >
+                    {item.completed && <CheckIcon className="h-6 w-6 text-white" />}
+                </button>
+            )}
             
             <div className={`flex-grow ${item.completed ? 'text-gray-400' : ''}`}>
                 <p className={`font-semibold text-gray-800 ${item.completed ? 'line-through' : ''}`}>
@@ -1124,14 +1141,16 @@ const ItemCompra: React.FC<{
                         </p>
                     )}
                 </div>
-                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <button onClick={() => onEdit(item)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded-full" aria-label={`Editar ${item.name}`}>
-                        <PencilIcon className="h-5 w-5" />
-                    </button>
-                    <button onClick={() => onDelete(item.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-full" aria-label={`Eliminar ${item.name}`}>
-                        <TrashIcon className="h-5 w-5" />
-                    </button>
-                </div>
+                {!isSelectionMode && (
+                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <button onClick={() => onEdit(item)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded-full" aria-label={`Editar ${item.name}`}>
+                            <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button onClick={() => onDelete(item.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-full" aria-label={`Eliminar ${item.name}`}>
+                            <TrashIcon className="h-5 w-5" />
+                        </button>
+                    </div>
+                )}
             </div>
         </li>
     );
@@ -1285,7 +1304,9 @@ const Filters: React.FC<{
   categoryCounts: Map<Category | null, number>;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-}> = ({ activeCategory, setActiveCategory, statusFilter, setStatusFilter, relevanceFilters, setRelevanceFilters, categoryCounts, searchQuery, setSearchQuery }) => {
+  isSelectionMode: boolean;
+  toggleSelectionMode: () => void;
+}> = ({ activeCategory, setActiveCategory, statusFilter, setStatusFilter, relevanceFilters, setRelevanceFilters, categoryCounts, searchQuery, setSearchQuery, isSelectionMode, toggleSelectionMode }) => {
     
     const handleRelevanceToggle = (relevance: Relevance) => {
         const newFilters = new Set(relevanceFilters);
@@ -1352,18 +1373,61 @@ const Filters: React.FC<{
                 </div>
             </div>
 
-            {/* Search Bar */}
-            <div className="relative mt-4">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <SearchIcon className="h-5 w-5 text-gray-400" />
+            {/* Search Bar & Select Button */}
+             <div className="flex items-center gap-4 mt-4">
+                <div className="relative flex-grow">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <SearchIcon className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="block w-full rounded-lg border-0 bg-gray-100 py-2.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                        placeholder="Buscar por nombre..."
+                    />
                 </div>
-                <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="block w-full rounded-lg border-0 bg-gray-100 py-2.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                    placeholder="Buscar por nombre..."
-                />
+                <button
+                    onClick={toggleSelectionMode}
+                    className={`flex-shrink-0 px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors ${
+                        isSelectionMode 
+                            ? 'bg-gray-200 text-gray-800 hover:bg-gray-300' 
+                            : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                    }`}
+                >
+                    {isSelectionMode ? 'Cancelar' : 'Seleccionar Items'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const MultiSelectActionBar: React.FC<{
+    count: number;
+    onDelete: () => void;
+    onCancel: () => void;
+}> = ({ count, onDelete, onCancel }) => {
+    if (count === 0) return null;
+
+    return (
+        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 z-20 animate-slide-up">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+                <span className="font-semibold text-gray-800">{count} item{count > 1 ? 's' : ''} seleccionado{count > 1 ? 's' : ''}</span>
+                <div className="flex space-x-3">
+                     <button
+                        onClick={onCancel}
+                        className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={onDelete}
+                        className="flex items-center space-x-2 px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                    >
+                        <TrashIcon className="h-4 w-4" />
+                        <span>Eliminar</span>
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -1400,6 +1464,13 @@ const App: React.FC = () => {
     const [viewingCategory, setViewingCategory] = useState<Category | null>(null);
     const [confirmingToggle, setConfirmingToggle] = useState<{ id: string; name: string; completed: boolean } | null>(null);
     const [itemRequiringPrice, setItemRequiringPrice] = useState<Item | null>(null);
+    const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
+    
+    // Multi-select states
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+    const [isConfirmingMultiDelete, setIsConfirmingMultiDelete] = useState(false);
+
 
     // Filter states
     const [statusFilter, setStatusFilter] = useState<'Pendientes' | 'Completados' | 'Todos'>('Todos');
@@ -1538,15 +1609,15 @@ const App: React.FC = () => {
         }
     };
 
-    const handleDeleteItem = async (id: string) => {
-        if (window.confirm('¿Estás seguro de que quieres eliminar este item?')) {
-            const itemRef = doc(db, 'items', id);
-            try {
-                await deleteDoc(itemRef);
-            } catch (error) {
-                console.error("Error deleting item: ", error);
-            }
+    const handleDeleteItem = async () => {
+        if (!deletingItemId) return;
+        const itemRef = doc(db, 'items', deletingItemId);
+        try {
+            await deleteDoc(itemRef);
+        } catch (error) {
+            console.error("Error deleting item: ", error);
         }
+        setDeletingItemId(null);
     };
 
     const handleSeedData = async () => {
@@ -1573,6 +1644,43 @@ const App: React.FC = () => {
         } catch (error) {
             console.error("Error seeding data: ", error);
             setLoading(false);
+        }
+    };
+
+    // Multi-select handlers
+    const toggleSelectionMode = () => {
+        setIsSelectionMode(prev => !prev);
+        setSelectedItems(new Set());
+    };
+
+    const handleSelectItem = (id: string) => {
+        setSelectedItems(prevSelected => {
+            const newSelected = new Set(prevSelected);
+            if (newSelected.has(id)) {
+                newSelected.delete(id);
+            } else {
+                newSelected.add(id);
+            }
+            return newSelected;
+        });
+    };
+
+    const handleDeleteSelectedItems = async () => {
+        if (selectedItems.size === 0) return;
+        const batch = writeBatch(db);
+        selectedItems.forEach(id => {
+            const itemRef = doc(db, 'items', id);
+            batch.delete(itemRef);
+        });
+
+        try {
+            await batch.commit();
+        } catch (error) {
+            console.error("Error deleting selected items: ", error);
+        } finally {
+            setSelectedItems(new Set());
+            setIsSelectionMode(false);
+            setIsConfirmingMultiDelete(false);
         }
     };
 
@@ -1638,6 +1746,11 @@ const App: React.FC = () => {
         });
         return counts;
     }, [preFilteredItems]);
+
+    const itemToDelete = useMemo(() => 
+        deletingItemId ? items.find(item => item.id === deletingItemId) : null, 
+        [deletingItemId, items]
+    );
     
     return (
         <div className="min-h-screen">
@@ -1684,6 +1797,8 @@ const App: React.FC = () => {
                     categoryCounts={categoryCounts}
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
+                    isSelectionMode={isSelectionMode}
+                    toggleSelectionMode={toggleSelectionMode}
                   />
                 </div>
 
@@ -1710,15 +1825,18 @@ const App: React.FC = () => {
                                 </div>
                             </div>
                         ) : filteredItems.length > 0 ? (
-                            <ul className="space-y-3 pb-8">
+                            <ul className="space-y-3 pb-24">
                                 {filteredItems.map(item => (
                                     <ItemCompra 
                                         key={item.id}
                                         item={item}
+                                        isSelectionMode={isSelectionMode}
+                                        isSelected={selectedItems.has(item.id)}
+                                        onSelectItem={handleSelectItem}
                                         onToggleComplete={(id, completed, name) => setConfirmingToggle({ id, completed, name })}
                                         onRequestPrice={setItemRequiringPrice}
                                         onEdit={setEditingItem}
-                                        onDelete={handleDeleteItem}
+                                        onDelete={setDeletingItemId}
                                     />
                                 ))}
                             </ul>
@@ -1749,12 +1867,16 @@ const App: React.FC = () => {
                 />
             )}
             {confirmingToggle && (
-                <ConfirmationModal
-                    itemName={confirmingToggle.name}
-                    actionText={confirmingToggle.completed ? 'completado' : 'pendiente'}
+                 <ConfirmationModal
+                    title="Confirmar Acción"
+                    confirmText="Confirmar"
                     onConfirm={handleConfirmToggle}
                     onCancel={() => setConfirmingToggle(null)}
-                />
+                >
+                    <p>
+                        ¿Estás seguro de que quieres marcar <span className="font-semibold text-gray-900">"{confirmingToggle.name}"</span> como {confirmingToggle.completed ? 'completado' : 'pendiente'}?
+                    </p>
+                </ConfirmationModal>
             )}
             {itemRequiringPrice && (
                 <EnterPriceModal
@@ -1762,6 +1884,39 @@ const App: React.FC = () => {
                     onConfirm={handlePriceAndComplete}
                     onClose={() => setItemRequiringPrice(null)}
                 />
+            )}
+            {itemToDelete && (
+                <ConfirmationModal
+                    title="Confirmar Eliminación"
+                    confirmText="Eliminar"
+                    confirmButtonClass="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                    onConfirm={handleDeleteItem}
+                    onCancel={() => setDeletingItemId(null)}
+                >
+                    <p>
+                        ¿Estás seguro de que quieres eliminar <span className="font-semibold text-gray-900">"{itemToDelete.name}"</span>? Esta acción no se puede deshacer.
+                    </p>
+                </ConfirmationModal>
+            )}
+            {isSelectionMode && selectedItems.size > 0 && (
+                <MultiSelectActionBar
+                    count={selectedItems.size}
+                    onDelete={() => setIsConfirmingMultiDelete(true)}
+                    onCancel={toggleSelectionMode}
+                />
+            )}
+            {isConfirmingMultiDelete && (
+                <ConfirmationModal
+                    title="Confirmar Eliminación Múltiple"
+                    confirmText="Eliminar"
+                    confirmButtonClass="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                    onConfirm={handleDeleteSelectedItems}
+                    onCancel={() => setIsConfirmingMultiDelete(false)}
+                >
+                    <p>
+                        ¿Estás seguro de que quieres eliminar los <span className="font-semibold text-gray-900">{selectedItems.size} items</span> seleccionados? Esta acción no se puede deshacer.
+                    </p>
+                </ConfirmationModal>
             )}
             <style>{`
                 @keyframes fade-in {
@@ -1774,6 +1929,11 @@ const App: React.FC = () => {
                 }
                 .animate-fade-in { animation: fade-in 0.2s ease-out forwards; }
                 .animate-scale-up { animation: scale-up 0.2s ease-out forwards; }
+                @keyframes slide-up {
+                    from { transform: translateY(100%); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+                .animate-slide-up { animation: slide-up 0.3s ease-out forwards; }
             `}</style>
         </div>
     );
