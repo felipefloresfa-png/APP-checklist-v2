@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { GoogleGenAI, Type } from "@google/genai";
@@ -14,7 +13,8 @@ import {
     addDoc, 
     updateDoc, 
     deleteDoc, 
-    writeBatch 
+    writeBatch,
+    serverTimestamp
 } from 'firebase/firestore';
 
 
@@ -54,6 +54,8 @@ export interface Item {
   quantity: number;
   completed: boolean;
   completedBy?: User | null;
+  createdAt?: any; // Firestore Timestamp
+  addedBy?: User;
 }
 
 export interface SuggestedItem {
@@ -170,6 +172,12 @@ const XIcon: React.FC<{ className?: string }> = ({ className }) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
   </svg>
 );
+const ClockIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
 
 // =================================================================================
 // --- FROM constants.ts ---
@@ -688,6 +696,66 @@ const ProgressBySpace: React.FC<{ items: Item[]; onCategoryClick: (category: Cat
     );
 };
 
+const RecentlyAdded: React.FC<{ items: Item[] }> = ({ items }) => {
+    const formatRelativeTime = (timestamp: any) => {
+        if (!timestamp || !timestamp.toDate) return 'Justo ahora';
+        const date = timestamp.toDate();
+        const now = new Date();
+        const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+        if (seconds < 5) return `justo ahora`;
+        if (seconds < 60) return `hace ${seconds} seg.`;
+        
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `hace ${minutes} min.`;
+
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `hace ${hours} h.`;
+        
+        const days = Math.floor(hours / 24);
+        if (days === 1) return `ayer`;
+        if (days < 7) return `hace ${days} días`;
+        
+        return new Intl.DateTimeFormat('es-CL', {
+            day: 'numeric',
+            month: 'long',
+        }).format(date);
+    };
+
+    return (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <ClockIcon className="h-6 w-6 mr-2 text-gray-400" />
+                Agregados Recientemente
+            </h2>
+            {items.length > 0 ? (
+                 <ul className="space-y-2">
+                    {items.map(item => (
+                        <li key={item.id} className="flex items-start space-x-3 p-2 rounded-lg transition-colors hover:bg-gray-50">
+                            <div className="flex-shrink-0 pt-1">
+                               <UserIcon className={`h-5 w-5 rounded-full p-0.5 ${item.addedBy === User.VALERIA ? 'text-pink-500 bg-pink-100' : 'text-indigo-500 bg-indigo-100'}`} />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-600">
+                                    <span className={`font-semibold ${item.addedBy === User.VALERIA ? 'text-pink-600' : 'text-indigo-600'}`}>{item.addedBy || 'Alguien'}</span>
+                                    {' '}agregó{' '}
+                                    <span className="font-semibold text-gray-800">{item.name}</span>
+                                </p>
+                                <p className="text-xs text-gray-400 mt-0.5">{formatRelativeTime(item.createdAt)}</p>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <div className="text-center text-gray-500 py-4 border-t border-gray-200 mt-4">
+                    <p>No se han agregado items recientemente.</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
 const CategoryItemsModal: React.FC<{
     category: Category;
     items: Item[];
@@ -884,17 +952,94 @@ const ConfirmationModal: React.FC<{
     );
 };
 
+const EnterPriceModal: React.FC<{
+    item: Item;
+    onConfirm: (item: Item, price: number) => void;
+    onClose: () => void;
+}> = ({ item, onConfirm, onClose }) => {
+    const [price, setPrice] = useState('');
+
+    const handleConfirm = () => {
+        const numericPrice = parseInt(price.replace(/\./g, ''), 10);
+        if (!isNaN(numericPrice) && numericPrice > 0) {
+            onConfirm(item, numericPrice);
+        }
+    };
+    
+    const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.replace(/\D/g, '');
+        if (value === '') {
+            setPrice('');
+        } else {
+            setPrice(new Intl.NumberFormat('es-CL').format(Number(value)));
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 animate-fade-in">
+            <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-sm m-4 text-center animate-scale-up">
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Ingresar Precio</h2>
+                <p className="text-gray-600 mb-6">
+                    Para completar <span className="font-semibold text-gray-900">"{item.name}"</span>, por favor ingresa su precio final.
+                </p>
+                <div>
+                    <label htmlFor="finalPrice" className="sr-only">Precio (CLP)</label>
+                    <div className="relative mt-1">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                            <span className="text-gray-400 sm:text-sm">$</span>
+                        </div>
+                        <input
+                            id="finalPrice"
+                            type="text"
+                            value={price}
+                            onChange={handlePriceChange}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleConfirm();
+                                if (e.key === 'Escape') onClose();
+                            }}
+                            placeholder="80.000"
+                            className="w-full text-center pl-7 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 placeholder-gray-400"
+                            required
+                            autoFocus
+                        />
+                    </div>
+                </div>
+                <div className="flex justify-center space-x-4 mt-6">
+                    <button
+                        onClick={onClose}
+                        className="px-6 py-2 text-base font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleConfirm}
+                        disabled={!price}
+                        className="px-6 py-2 text-base font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:bg-indigo-300"
+                    >
+                        Confirmar y Completar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 const ItemCompra: React.FC<{
     item: Item;
     onToggleComplete: (id: string, completed: boolean, name: string) => void;
+    onRequestPrice: (item: Item) => void;
     onEdit: (item: Item) => void;
     onDelete: (id: string) => void;
-}> = ({ item, onToggleComplete, onEdit, onDelete }) => {
+}> = ({ item, onToggleComplete, onRequestPrice, onEdit, onDelete }) => {
     const formatCurrency = (value: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
     const handleToggle = () => {
-        onToggleComplete(item.id, !item.completed, item.name);
+        if (!item.completed && (!item.price || item.price === 0)) {
+            onRequestPrice(item);
+        } else {
+            onToggleComplete(item.id, !item.completed, item.name);
+        }
     };
 
     const relevancePillStyles: Record<Relevance, string> = {
@@ -924,7 +1069,7 @@ const ItemCompra: React.FC<{
                         {item.relevance}
                     </span>
                     {item.completed && item.completedBy && (
-                        <div className="flex items-center space-x-1.5">
+                        <div className="flex items-center space-x-1.5 whitespace-nowrap">
                             <span className="text-gray-400">&bull;</span>
                             <UserIcon className={`h-3.5 w-3.5 ${item.completedBy === User.VALERIA ? 'text-pink-500' : 'text-indigo-500'}`} />
                             <span className="text-xs font-medium text-gray-500">
@@ -938,9 +1083,9 @@ const ItemCompra: React.FC<{
             <div className="ml-4 flex items-center space-x-2">
                 <div className="text-right">
                     <p className={`font-bold text-lg ${item.completed ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
-                        {formatCurrency(item.price * quantity)}
+                        {(item.price || 0) > 0 ? formatCurrency(item.price * quantity) : '-'}
                     </p>
-                    {quantity > 1 && (
+                    {quantity > 1 && (item.price || 0) > 0 && (
                         <p className={`text-xs ${item.completed ? 'text-gray-400 line-through' : 'text-gray-500'}`}>
                             {formatCurrency(item.price)} c/u
                         </p>
@@ -959,25 +1104,23 @@ const ItemCompra: React.FC<{
     );
 };
 
-const FormularioAgregarItem: React.FC<{ onAddItem: (item: Omit<Item, 'id' | 'completed' | 'completedBy'>) => void; }> = ({ onAddItem }) => {
+const FormularioAgregarItem: React.FC<{ onAddItem: (item: Omit<Item, 'id' | 'completed' | 'completedBy' | 'createdAt' | 'addedBy'>) => void; }> = ({ onAddItem }) => {
     const [name, setName] = useState('');
-    const [price, setPrice] = useState('');
     const [category, setCategory] = useState<Category | ''>('');
     const [relevance, setRelevance] = useState<Relevance>(Relevance.MEDIUM);
     const [quantity, setQuantity] = useState('1');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (name && price && category) {
+        if (name && category) {
             onAddItem({ 
                 name, 
-                price: parseInt(price.replace(/\./g, ''), 10), 
+                price: 0, 
                 category, 
                 relevance,
                 quantity: parseInt(quantity, 10) || 1 
             });
             setName('');
-            setPrice('');
             setCategory('');
             setRelevance(Relevance.MEDIUM);
             setQuantity('1');
@@ -1003,7 +1146,19 @@ const FormularioAgregarItem: React.FC<{ onAddItem: (item: Omit<Item, 'id' | 'com
                         required
                     />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label htmlFor="itemQuantity" className="block text-sm font-medium text-gray-700">Cantidad *</label>
+                        <input
+                            id="itemQuantity"
+                            type="number"
+                            value={quantity}
+                            onChange={(e) => setQuantity(e.target.value)}
+                            min="1"
+                            className="mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                            required
+                        />
+                    </div>
                     <div>
                         <label htmlFor="itemCategory" className="block text-sm font-medium text-gray-700">Espacio / Categoría *</label>
                         <select id="itemCategory" value={category} onChange={(e) => setCategory(e.target.value as Category)} required 
@@ -1024,51 +1179,13 @@ const FormularioAgregarItem: React.FC<{ onAddItem: (item: Omit<Item, 'id' | 'com
                         </select>
                     </div>
                 </div>
-                 <div className="grid grid-cols-2 gap-4">
-                    <div>
-                         <label htmlFor="itemPrice" className="block text-sm font-medium text-gray-700">Precio (CLP) *</label>
-                        <div className="relative mt-1">
-                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                <span className="text-gray-400 sm:text-sm">$</span>
-                            </div>
-                            <input
-                                id="itemPrice"
-                                type="text"
-                                value={price}
-                                onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '');
-                                    if (value === '') {
-                                        setPrice('');
-                                    } else {
-                                        setPrice(new Intl.NumberFormat('es-CL').format(Number(value)));
-                                    }
-                                }}
-                                placeholder="80.000"
-                                className="w-full pl-7 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 placeholder-gray-400"
-                                required
-                            />
-                        </div>
-                    </div>
-                     <div>
-                         <label htmlFor="itemQuantity" className="block text-sm font-medium text-gray-700">Cantidad *</label>
-                         <input
-                            id="itemQuantity"
-                            type="number"
-                            value={quantity}
-                            onChange={(e) => setQuantity(e.target.value)}
-                            min="1"
-                            className="mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
-                            required
-                        />
-                    </div>
-                </div>
                 <button type="submit" className="w-full px-4 py-3 text-base font-semibold text-gray-600 bg-violet-200 rounded-lg hover:bg-violet-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transition-colors">Agregar</button>
             </form>
         </div>
     );
 };
 
-const SuggestionsSection: React.FC<{ onAddSuggestion: (item: Omit<Item, 'id'|'completed'|'completedBy'>) => void }> = ({ onAddSuggestion }) => {
+const SuggestionsSection: React.FC<{ onAddSuggestion: (item: Omit<Item, 'id'|'completed'|'completedBy' | 'createdAt' | 'addedBy'>) => void }> = ({ onAddSuggestion }) => {
     const [category, setCategory] = useState<Category>(Category.LIVING);
     const [suggestions, setSuggestions] = useState<SuggestedItemResponse[]>([]);
     const [loading, setLoading] = useState(false);
@@ -1160,22 +1277,8 @@ const Filters: React.FC<{
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-            {/* Search Bar */}
-            <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <SearchIcon className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="block w-full rounded-lg border-0 bg-gray-100 py-2.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                    placeholder="Buscar por nombre..."
-                />
-            </div>
-            
             {/* Category Tabs */}
-            <div className="mt-4 flex space-x-1 sm:space-x-2 border-b border-gray-200 overflow-x-auto pb-0 -mx-4 px-4 horizontal-scroll-cards" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="flex space-x-1 sm:space-x-2 border-b border-gray-200 overflow-x-auto pb-0 -mx-4 px-4 horizontal-scroll-cards" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {categoryTabs.map(cat => {
                     const count = categoryCounts.get(cat.id);
                     const isVisible = cat.id === null || (count !== undefined && count > 0) || CATEGORIES.some(c => c.id === cat.id);
@@ -1215,6 +1318,20 @@ const Filters: React.FC<{
                     ))}
                 </div>
             </div>
+
+            {/* Search Bar */}
+            <div className="relative mt-4">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <SearchIcon className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="block w-full rounded-lg border-0 bg-gray-100 py-2.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    placeholder="Buscar por nombre..."
+                />
+            </div>
         </div>
     );
 };
@@ -1227,6 +1344,7 @@ const App: React.FC = () => {
     const [editingItem, setEditingItem] = useState<Item | null>(null);
     const [viewingCategory, setViewingCategory] = useState<Category | null>(null);
     const [confirmingToggle, setConfirmingToggle] = useState<{ id: string; name: string; completed: boolean } | null>(null);
+    const [itemRequiringPrice, setItemRequiringPrice] = useState<Item | null>(null);
 
     // Filter states
     const [statusFilter, setStatusFilter] = useState<'Pendientes' | 'Completados' | 'Todos'>('Pendientes');
@@ -1235,7 +1353,7 @@ const App: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
-      const itemsQuery = query(collection(db, 'items'), orderBy('name'));
+      const itemsQuery = query(collection(db, 'items'), orderBy('createdAt', 'desc'));
       const unsubscribe = onSnapshot(itemsQuery, (querySnapshot) => {
         const itemsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
         setItems(itemsData);
@@ -1246,7 +1364,13 @@ const App: React.FC = () => {
             const itemsCol = collection(db, 'items');
             initialItems.forEach(item => {
                 const docRef = doc(itemsCol);
-                batch.set(docRef, { ...item, completed: false, completedBy: null });
+                batch.set(docRef, { 
+                    ...item, 
+                    completed: false, 
+                    completedBy: null,
+                    createdAt: serverTimestamp(),
+                    addedBy: User.FELIPE // Default user for initial seed
+                });
             });
             batch.commit();
         }
@@ -1266,9 +1390,15 @@ const App: React.FC = () => {
         return () => unsubscribe();
     }, []);
 
-    const handleAddItem = async (item: Omit<Item, 'id' | 'completed' | 'completedBy'>) => {
+    const handleAddItem = async (item: Omit<Item, 'id' | 'completed' | 'completedBy' | 'createdAt' | 'addedBy'>) => {
         try {
-            await addDoc(collection(db, 'items'), { ...item, completed: false, completedBy: null });
+            await addDoc(collection(db, 'items'), { 
+                ...item, 
+                completed: false, 
+                completedBy: null,
+                createdAt: serverTimestamp(),
+                addedBy: currentUser
+            });
         } catch (error) {
             console.error("Error adding item: ", error);
         }
@@ -1290,6 +1420,20 @@ const App: React.FC = () => {
         if (confirmingToggle) {
             handleToggleComplete(confirmingToggle.id, confirmingToggle.completed);
             setConfirmingToggle(null);
+        }
+    };
+
+    const handlePriceAndComplete = async (item: Item, price: number) => {
+        const itemRef = doc(db, 'items', item.id);
+        try {
+            await updateDoc(itemRef, {
+                price: price,
+                completed: true,
+                completedBy: currentUser
+            });
+            setItemRequiringPrice(null); // Close modal
+        } catch (error) {
+            console.error("Error updating price and completing item: ", error);
         }
     };
 
@@ -1343,11 +1487,19 @@ const App: React.FC = () => {
     }, [items, statusFilter, relevanceFilters, searchQuery]);
 
     const filteredItems = useMemo(() => {
-        return preFilteredItems.filter(item => {
+        const sorted = [...preFilteredItems].sort((a, b) => a.name.localeCompare(b.name));
+        return sorted.filter(item => {
                 if (!activeCategory) return true;
                 return item.category === activeCategory;
             });
     }, [preFilteredItems, activeCategory]);
+
+    const recentlyAddedItems = useMemo(() => {
+        return [...items]
+            .filter(item => item.createdAt)
+            .sort((a, b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime())
+            .slice(0, 5);
+    }, [items]);
 
     const categoryCounts = useMemo(() => {
         const counts = new Map<Category | null, number>();
@@ -1383,9 +1535,13 @@ const App: React.FC = () => {
                     />
                 </div>
                 
+                <div className="mb-6">
+                    <RecentlyAdded items={recentlyAddedItems} />
+                </div>
+
                 <ProgressBySpace items={items} onCategoryClick={setViewingCategory} />
 
-                <div className="mt-4">
+                <div className="mt-6">
                   <FormularioAgregarItem onAddItem={handleAddItem} />
                 </div>
                 <div className="my-6">
@@ -1412,6 +1568,7 @@ const App: React.FC = () => {
                                 key={item.id}
                                 item={item}
                                 onToggleComplete={(id, completed, name) => setConfirmingToggle({ id, completed, name })}
+                                onRequestPrice={setItemRequiringPrice}
                                 onEdit={setEditingItem}
                                 onDelete={handleDeleteItem}
                             />
@@ -1439,6 +1596,13 @@ const App: React.FC = () => {
                     actionText={confirmingToggle.completed ? 'completado' : 'pendiente'}
                     onConfirm={handleConfirmToggle}
                     onCancel={() => setConfirmingToggle(null)}
+                />
+            )}
+            {itemRequiringPrice && (
+                <EnterPriceModal
+                    item={itemRequiringPrice}
+                    onConfirm={handlePriceAndComplete}
+                    onClose={() => setItemRequiringPrice(null)}
                 />
             )}
             <style>{`
