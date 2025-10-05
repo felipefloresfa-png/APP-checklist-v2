@@ -55,6 +55,7 @@ export interface Item {
   completed: boolean;
   completedBy?: User | null;
   createdAt?: any; // Firestore Timestamp
+  completedAt?: any; // Firestore Timestamp
   addedBy?: User;
 }
 
@@ -961,7 +962,7 @@ const EnterPriceModal: React.FC<{
 
     const handleConfirm = () => {
         const numericPrice = parseInt(price.replace(/\./g, ''), 10);
-        if (!isNaN(numericPrice) && numericPrice > 0) {
+        if (!isNaN(numericPrice) && numericPrice >= 0) {
             onConfirm(item, numericPrice);
         }
     };
@@ -997,7 +998,7 @@ const EnterPriceModal: React.FC<{
                                 if (e.key === 'Enter') handleConfirm();
                                 if (e.key === 'Escape') onClose();
                             }}
-                            placeholder="80.000"
+                            placeholder="0"
                             className="w-full text-center pl-7 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 placeholder-gray-400"
                             required
                             autoFocus
@@ -1390,13 +1391,14 @@ const App: React.FC = () => {
         return () => unsubscribe();
     }, []);
 
-    const handleAddItem = async (item: Omit<Item, 'id' | 'completed' | 'completedBy' | 'createdAt' | 'addedBy'>) => {
+    const handleAddItem = async (item: Omit<Item, 'id' | 'completed' | 'completedBy' | 'createdAt' | 'addedBy' | 'completedAt'>) => {
         try {
             await addDoc(collection(db, 'items'), { 
                 ...item, 
                 completed: false, 
                 completedBy: null,
                 createdAt: serverTimestamp(),
+                completedAt: null,
                 addedBy: currentUser
             });
         } catch (error) {
@@ -1409,7 +1411,8 @@ const App: React.FC = () => {
         try {
             await updateDoc(itemRef, {
                 completed: completed,
-                completedBy: completed ? currentUser : null
+                completedBy: completed ? currentUser : null,
+                completedAt: completed ? serverTimestamp() : null
             });
         } catch (error) {
             console.error("Error updating item: ", error);
@@ -1429,7 +1432,8 @@ const App: React.FC = () => {
             await updateDoc(itemRef, {
                 price: price,
                 completed: true,
-                completedBy: currentUser
+                completedBy: currentUser,
+                completedAt: serverTimestamp()
             });
             setItemRequiringPrice(null); // Close modal
         } catch (error) {
@@ -1496,8 +1500,11 @@ const App: React.FC = () => {
 
     const recentlyAddedItems = useMemo(() => {
         return [...items]
-            .filter(item => item.createdAt)
-            .sort((a, b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime())
+            .sort((a, b) => {
+                const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+                const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+                return timeB - timeA;
+            })
             .slice(0, 5);
     }, [items]);
 
