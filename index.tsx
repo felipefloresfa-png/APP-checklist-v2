@@ -840,7 +840,15 @@ const CategoryItemsModal: React.FC<{
 
 const EditItemModal: React.FC<{
     item: Item;
-    onUpdate: (id: string, dataToUpdate: { name: string; price: number; category: Category; relevance: Relevance; quantity: number; addedBy?: User; }) => void;
+    onUpdate: (id: string, dataToUpdate: { 
+        name: string; 
+        price: number; 
+        category: Category; 
+        relevance: Relevance; 
+        quantity: number; 
+        addedBy?: User; 
+        completedBy?: User | null;
+    }) => void;
     onClose: () => void;
 }> = ({ item, onUpdate, onClose }) => {
     const [name, setName] = useState(item.name);
@@ -848,20 +856,28 @@ const EditItemModal: React.FC<{
     const [category, setCategory] = useState<Category>(item.category);
     const [relevance, setRelevance] = useState<Relevance>(item.relevance);
     const [quantity, setQuantity] = useState((item.quantity || 1).toString());
-    const [addedBy, setAddedBy] = useState<User | undefined>(item.addedBy);
+    
+    const [responsibleUser, setResponsibleUser] = useState<User | null | undefined>(
+        item.completed ? item.completedBy : item.addedBy
+    );
+    const userFieldLabel = item.completed ? "Completado por" : "Agregado por";
 
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (name && price && category) {
-            const dataToUpdate = {
+            const commonData = {
                 name,
                 price: parseInt(price.replace(/\./g, ''), 10),
                 category,
                 relevance,
                 quantity: parseInt(quantity, 10) || 1,
-                addedBy
             };
+
+            const dataToUpdate = item.completed 
+                ? { ...commonData, completedBy: responsibleUser }
+                : { ...commonData, addedBy: responsibleUser as User };
+
             onUpdate(item.id, dataToUpdate);
             onClose();
         }
@@ -945,8 +961,8 @@ const EditItemModal: React.FC<{
                             </select>
                         </div>
                         <div>
-                            <label htmlFor="editItemAddedBy" className="block text-sm font-medium text-gray-700">Agregado por</label>
-                            <select id="editItemAddedBy" value={addedBy || ''} onChange={(e) => setAddedBy(e.target.value as User)}
+                            <label htmlFor="editItemUser" className="block text-sm font-medium text-gray-700">{userFieldLabel}</label>
+                            <select id="editItemUser" value={responsibleUser || ''} onChange={(e) => setResponsibleUser(e.target.value as User)}
                                 className="appearance-none mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
                                 style={selectArrowStyle}
                             >
@@ -1098,6 +1114,10 @@ const ItemCompra: React.FC<{
 
     const quantity = item.quantity || 1;
 
+    // Determine which user and date to display based on completion status
+    const userToShow = item.completed ? item.completedBy : item.addedBy;
+    const dateToShow = item.completed ? item.completedAt : item.createdAt;
+
     return (
         <li className={`group flex items-center p-3 bg-white rounded-xl shadow-sm border transition-all duration-200 ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-100'}`}>
             {isSelectionMode ? (
@@ -1128,20 +1148,22 @@ const ItemCompra: React.FC<{
                     <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${relevancePillStyles[item.relevance]}`}>
                         {item.relevance}
                     </span>
-                    {item.completed && item.completedBy && (
+                    
+                    {userToShow && (
                         <div className="flex items-center space-x-1.5 whitespace-nowrap">
                             <span className="text-gray-400">&bull;</span>
-                            <UserIcon className={`h-3.5 w-3.5 ${item.completedBy === User.VALERIA ? 'text-pink-500' : 'text-indigo-500'}`} />
+                            <UserIcon className={`h-3.5 w-3.5 ${userToShow === User.VALERIA ? 'text-pink-500' : 'text-indigo-500'}`} />
                             <span className="text-xs font-medium text-gray-500">
-                                por {item.completedBy}
+                                por {userToShow}
                             </span>
                         </div>
                     )}
-                    {item.completed && item.completedAt && (
+                    
+                    {dateToShow && (
                          <div className="flex items-center space-x-1.5 whitespace-nowrap">
                             <span className="text-gray-400">&bull;</span>
                             <span className="text-xs font-medium text-gray-500">
-                                {new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short' }).format(item.completedAt)}.
+                                {new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short' }).format(dateToShow)}.
                             </span>
                         </div>
                     )}
@@ -1619,7 +1641,7 @@ const App: React.FC = () => {
         }
     };
 
-    const handleUpdateItem = async (id: string, dataToUpdate: { name: string; price: number; category: Category; relevance: Relevance; quantity: number; addedBy?: User; }) => {
+    const handleUpdateItem = async (id: string, dataToUpdate: { name: string; price: number; category: Category; relevance: Relevance; quantity: number; addedBy?: User; completedBy?: User | null; }) => {
         const itemRef = doc(db, 'items', id);
         try {
             await updateDoc(itemRef, dataToUpdate);
