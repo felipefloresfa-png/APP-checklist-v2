@@ -1,9 +1,22 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { GoogleGenAI, Type } from "@google/genai";
-// FIX: Switched to Firebase v9 compat libraries to resolve initialization errors.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/firestore';
+import { initializeApp } from 'firebase/app';
+import { 
+    getFirestore, 
+    collection, 
+    onSnapshot, 
+    query, 
+    orderBy, 
+    doc, 
+    setDoc, 
+    addDoc, 
+    updateDoc, 
+    deleteDoc, 
+    writeBatch 
+} from 'firebase/firestore';
+
 
 // =================================================================================
 // --- FROM types.ts ---
@@ -38,6 +51,7 @@ export interface Item {
   category: Category;
   relevance: Relevance;
   price: number;
+  quantity: number;
   completed: boolean;
   completedBy?: User | null;
 }
@@ -184,103 +198,103 @@ const RELEVANCE_STYLES: Record<Relevance, { bg: string; text: string, dot: strin
 // =================================================================================
 const initialItems: Omit<Item, 'id' | 'completed' | 'completedBy'>[] = [
   // LAVANDERIA
-  { name: 'Lavadora secadora', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 450000 },
-  { name: 'Repisa para detergentes', category: Category.LAUNDRY, relevance: Relevance.LOW, price: 25000 },
-  { name: 'Colgador plegable', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 30000 },
-  { name: 'Plancha', category: Category.LAUNDRY, relevance: Relevance.MEDIUM, price: 20000 },
-  { name: 'Tabla de Planchar', category: Category.LAUNDRY, relevance: Relevance.LOW, price: 25000 },
-  { name: 'Ganchos para ropa', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 10000 },
-  { name: 'Canasto ropa sucia', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 15000 },
-  { name: 'Canasto ropa limpia', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 15000 },
-  { name: 'Cortina Roller', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 40000 },
+  { name: 'Lavadora secadora', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 450000, quantity: 1 },
+  { name: 'Repisa para detergentes', category: Category.LAUNDRY, relevance: Relevance.LOW, price: 25000, quantity: 1 },
+  { name: 'Colgador plegable', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 30000, quantity: 1 },
+  { name: 'Plancha', category: Category.LAUNDRY, relevance: Relevance.MEDIUM, price: 20000, quantity: 1 },
+  { name: 'Tabla de Planchar', category: Category.LAUNDRY, relevance: Relevance.LOW, price: 25000, quantity: 1 },
+  { name: 'Ganchos para ropa', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 10000, quantity: 1 },
+  { name: 'Canasto ropa sucia', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 15000, quantity: 1 },
+  { name: 'Canasto ropa limpia', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 15000, quantity: 1 },
+  { name: 'Cortina Roller', category: Category.LAUNDRY, relevance: Relevance.HIGH, price: 40000, quantity: 1 },
   // COCINA
-  { name: 'Refrigerador', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 500000 },
-  { name: 'Microondas', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 70000 },
-  { name: 'Hervidor electrico', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 20000 },
-  { name: 'Juego de Ollas', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 80000 },
-  { name: 'Sarten grande', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 25000 },
-  { name: 'Sarten pequeno', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 15000 },
-  { name: 'Fuente de vidrio (budinera)', category: Category.KITCHEN, relevance: Relevance.LOW, price: 12000 },
-  { name: 'Vajilla (12p)', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 60000 },
-  { name: 'Vasos (x6)', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 15000 },
-  { name: 'Jarro para jugo', category: Category.KITCHEN, relevance: Relevance.LOW, price: 8000 },
-  { name: 'Tazas (x6)', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 18000 },
-  { name: 'Juego de Cubiertos', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 30000 },
-  { name: 'Colador', category: Category.KITCHEN, relevance: Relevance.LOW, price: 5000 },
-  { name: 'Paños de cocina', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 7000 },
-  { name: 'Abre latas', category: Category.KITCHEN, relevance: Relevance.LOW, price: 4000 },
-  { name: 'Set de Cuchillos', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 35000 },
-  { name: 'Freidora de aire', category: Category.KITCHEN, relevance: Relevance.LOW, price: 60000 },
-  { name: 'Tostador de pan', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 20000 },
-  { name: 'Escobillon y Pala', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 10000 },
-  { name: 'Trapeador', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 12000 },
-  { name: 'Cafetera', category: Category.KITCHEN, relevance: Relevance.LOW, price: 50000 },
-  { name: 'Secador de loza', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 15000 },
-  { name: '3 sillas altas de cocina americana', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 90000 },
-  { name: 'Dispensador de lavaloza', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 8000 },
-  { name: 'Dispensador de jabon', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 8000 },
-  { name: 'Porta Esponja', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 5000 },
-  { name: 'Porta servilleta', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 6000 },
-  { name: 'Porta Toalla absorbente', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 10000 },
-  { name: 'Licuadora', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 45000 },
-  { name: 'Set de Tupperware', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 20000 },
-  { name: 'Tabla para picar (x2)', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 12000 },
+  { name: 'Refrigerador', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 500000, quantity: 1 },
+  { name: 'Microondas', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 70000, quantity: 1 },
+  { name: 'Hervidor electrico', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 20000, quantity: 1 },
+  { name: 'Juego de Ollas', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 80000, quantity: 1 },
+  { name: 'Sarten grande', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 25000, quantity: 1 },
+  { name: 'Sarten pequeno', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 15000, quantity: 1 },
+  { name: 'Fuente de vidrio (budinera)', category: Category.KITCHEN, relevance: Relevance.LOW, price: 12000, quantity: 1 },
+  { name: 'Vajilla (12p)', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 60000, quantity: 1 },
+  { name: 'Vasos (x6)', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 15000, quantity: 1 },
+  { name: 'Jarro para jugo', category: Category.KITCHEN, relevance: Relevance.LOW, price: 8000, quantity: 1 },
+  { name: 'Tazas (x6)', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 18000, quantity: 1 },
+  { name: 'Juego de Cubiertos', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 30000, quantity: 1 },
+  { name: 'Colador', category: Category.KITCHEN, relevance: Relevance.LOW, price: 5000, quantity: 1 },
+  { name: 'Paños de cocina', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 7000, quantity: 1 },
+  { name: 'Abre latas', category: Category.KITCHEN, relevance: Relevance.LOW, price: 4000, quantity: 1 },
+  { name: 'Set de Cuchillos', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 35000, quantity: 1 },
+  { name: 'Freidora de aire', category: Category.KITCHEN, relevance: Relevance.LOW, price: 60000, quantity: 1 },
+  { name: 'Tostador de pan', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 20000, quantity: 1 },
+  { name: 'Escobillon y Pala', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 10000, quantity: 1 },
+  { name: 'Trapeador', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 12000, quantity: 1 },
+  { name: 'Cafetera', category: Category.KITCHEN, relevance: Relevance.LOW, price: 50000, quantity: 1 },
+  { name: 'Secador de loza', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 15000, quantity: 1 },
+  { name: '3 sillas altas de cocina americana', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 90000, quantity: 1 },
+  { name: 'Dispensador de lavaloza', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 8000, quantity: 1 },
+  { name: 'Dispensador de jabon', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 8000, quantity: 1 },
+  { name: 'Porta Esponja', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 5000, quantity: 1 },
+  { name: 'Porta servilleta', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 6000, quantity: 1 },
+  { name: 'Porta Toalla absorbente', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 10000, quantity: 1 },
+  { name: 'Licuadora', category: Category.KITCHEN, relevance: Relevance.MEDIUM, price: 45000, quantity: 1 },
+  { name: 'Set de Tupperware', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 20000, quantity: 1 },
+  { name: 'Tabla para picar (x2)', category: Category.KITCHEN, relevance: Relevance.HIGH, price: 12000, quantity: 1 },
   // LIVING
-  { name: 'Sofa en L', category: Category.LIVING, relevance: Relevance.MEDIUM, price: 600000 },
-  { name: '2 Sillones individuales', category: Category.LIVING, relevance: Relevance.LOW, price: 250000 },
-  { name: 'Mesa de Centro', category: Category.LIVING, relevance: Relevance.LOW, price: 80000 },
-  { name: 'TV 55"', category: Category.LIVING, relevance: Relevance.MEDIUM, price: 350000 },
-  { name: 'Mueble para TV', category: Category.LIVING, relevance: Relevance.MEDIUM, price: 120000 },
-  { name: 'Alfombra', category: Category.LIVING, relevance: Relevance.MEDIUM, price: 90000 },
-  { name: 'Mesa Lateral', category: Category.LIVING, relevance: Relevance.LOW, price: 40000 },
-  { name: 'Cojines Decorativos (x4)', category: Category.LIVING, relevance: Relevance.LOW, price: 30000 },
-  { name: 'Manta para Sofá', category: Category.LIVING, relevance: Relevance.LOW, price: 25000 },
+  { name: 'Sofa en L', category: Category.LIVING, relevance: Relevance.MEDIUM, price: 600000, quantity: 1 },
+  { name: '2 Sillones individuales', category: Category.LIVING, relevance: Relevance.LOW, price: 250000, quantity: 1 },
+  { name: 'Mesa de Centro', category: Category.LIVING, relevance: Relevance.LOW, price: 80000, quantity: 1 },
+  { name: 'TV 55"', category: Category.LIVING, relevance: Relevance.MEDIUM, price: 350000, quantity: 1 },
+  { name: 'Mueble para TV', category: Category.LIVING, relevance: Relevance.MEDIUM, price: 120000, quantity: 1 },
+  { name: 'Alfombra', category: Category.LIVING, relevance: Relevance.MEDIUM, price: 90000, quantity: 1 },
+  { name: 'Mesa Lateral', category: Category.LIVING, relevance: Relevance.LOW, price: 40000, quantity: 1 },
+  { name: 'Cojines Decorativos (x4)', category: Category.LIVING, relevance: Relevance.LOW, price: 30000, quantity: 1 },
+  { name: 'Manta para Sofá', category: Category.LIVING, relevance: Relevance.LOW, price: 25000, quantity: 1 },
   // COMEDOR
-  { name: 'Comedor 6 sillas', category: Category.DINING, relevance: Relevance.MEDIUM, price: 300000 },
-  { name: 'Florero', category: Category.DINING, relevance: Relevance.LOW, price: 15000 },
-  { name: 'Camino de mesa', category: Category.DINING, relevance: Relevance.LOW, price: 12000 },
-  { name: 'Individuales para mesa (x6)', category: Category.DINING, relevance: Relevance.LOW, price: 18000 },
+  { name: 'Comedor 6 sillas', category: Category.DINING, relevance: Relevance.MEDIUM, price: 300000, quantity: 1 },
+  { name: 'Florero', category: Category.DINING, relevance: Relevance.LOW, price: 15000, quantity: 1 },
+  { name: 'Camino de mesa', category: Category.DINING, relevance: Relevance.LOW, price: 12000, quantity: 1 },
+  { name: 'Individuales para mesa (x6)', category: Category.DINING, relevance: Relevance.LOW, price: 18000, quantity: 1 },
   // DORMITORIO PIPE
-  { name: 'Cama 1.5 plazas', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 200000 },
-  { name: '2 juegos de sabanas 1.5p', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 50000 },
-  { name: '2 cubrecamas 1.5p', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 70000 },
-  { name: 'Basurero', category: Category.PIPE_BEDROOM, relevance: Relevance.LOW, price: 8000 },
-  { name: 'Escritorio', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 90000 },
-  { name: 'Silla de escritorio', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 60000 },
-  { name: 'Cortina', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 45000 },
-  { name: 'Lampara de escritorio', category: Category.PIPE_BEDROOM, relevance: Relevance.MEDIUM, price: 20000 },
-  { name: 'Velador', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 40000 },
+  { name: 'Cama 1.5 plazas', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 200000, quantity: 1 },
+  { name: '2 juegos de sabanas 1.5p', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 50000, quantity: 1 },
+  { name: '2 cubrecamas 1.5p', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 70000, quantity: 1 },
+  { name: 'Basurero', category: Category.PIPE_BEDROOM, relevance: Relevance.LOW, price: 8000, quantity: 1 },
+  { name: 'Escritorio', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 90000, quantity: 1 },
+  { name: 'Silla de escritorio', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 60000, quantity: 1 },
+  { name: 'Cortina', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 45000, quantity: 1 },
+  { name: 'Lampara de escritorio', category: Category.PIPE_BEDROOM, relevance: Relevance.MEDIUM, price: 20000, quantity: 1 },
+  { name: 'Velador', category: Category.PIPE_BEDROOM, relevance: Relevance.HIGH, price: 40000, quantity: 1 },
   // DORMITORIO PRINCIPAL
-  { name: 'Cama 2 plazas', category: Category.MAIN_BEDROOM, relevance: Relevance.HIGH, price: 350000 },
-  { name: '2 juegos de sabanas 2p', category: Category.MAIN_BEDROOM, relevance: Relevance.HIGH, price: 70000 },
-  { name: 'Cubrecama 2p', category: Category.MAIN_BEDROOM, relevance: Relevance.HIGH, price: 50000 },
-  { name: 'Almohadas (x2)', category: Category.MAIN_BEDROOM, relevance: Relevance.HIGH, price: 30000 },
-  { name: 'Velador (x2)', category: Category.MAIN_BEDROOM, relevance: Relevance.MEDIUM, price: 80000 },
-  { name: 'Lampara de velador (x2)', category: Category.MAIN_BEDROOM, relevance: Relevance.MEDIUM, price: 40000 },
-  { name: 'Cortinas Roller duo', category: Category.MAIN_BEDROOM, relevance: Relevance.HIGH, price: 80000 },
-  { name: 'Cómoda / Cajonera', category: Category.MAIN_BEDROOM, relevance: Relevance.MEDIUM, price: 120000 },
+  { name: 'Cama 2 plazas', category: Category.MAIN_BEDROOM, relevance: Relevance.HIGH, price: 350000, quantity: 1 },
+  { name: '2 juegos de sabanas 2p', category: Category.MAIN_BEDROOM, relevance: Relevance.HIGH, price: 70000, quantity: 1 },
+  { name: 'Cubrecama 2p', category: Category.MAIN_BEDROOM, relevance: Relevance.HIGH, price: 50000, quantity: 1 },
+  { name: 'Almohadas (x2)', category: Category.MAIN_BEDROOM, relevance: Relevance.HIGH, price: 30000, quantity: 1 },
+  { name: 'Velador (x2)', category: Category.MAIN_BEDROOM, relevance: Relevance.MEDIUM, price: 80000, quantity: 1 },
+  { name: 'Lampara de velador (x2)', category: Category.MAIN_BEDROOM, relevance: Relevance.MEDIUM, price: 40000, quantity: 1 },
+  { name: 'Cortinas Roller duo', category: Category.MAIN_BEDROOM, relevance: Relevance.HIGH, price: 80000, quantity: 1 },
+  { name: 'Cómoda / Cajonera', category: Category.MAIN_BEDROOM, relevance: Relevance.MEDIUM, price: 120000, quantity: 1 },
   // BAÑOS
-  { name: 'Toallas de corpo (x4)', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 40000 },
-  { name: 'Toallas de mano (x4)', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 20000 },
-  { name: 'Set dispensadores (jabon, shampoo, acond.)', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 25000 },
-  { name: 'Set de baño (escobilla, basurero)', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 30000 },
-  { name: 'Porta Toallas', category: Category.BATHROOMS, relevance: Relevance.MEDIUM, price: 20000 },
-  { name: 'Salida de ducha', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 15000 },
-  { name: 'Antideslizante ducha', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 10000 },
-  { name: 'Cortina de baño y forro', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 20000 },
-  { name: 'Sopapo', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 5000 },
+  { name: 'Toallas de corpo (x4)', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 40000, quantity: 1 },
+  { name: 'Toallas de mano (x4)', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 20000, quantity: 1 },
+  { name: 'Set dispensadores (jabon, shampoo, acond.)', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 25000, quantity: 1 },
+  { name: 'Set de baño (escobilla, basurero)', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 30000, quantity: 1 },
+  { name: 'Porta Toallas', category: Category.BATHROOMS, relevance: Relevance.MEDIUM, price: 20000, quantity: 1 },
+  { name: 'Salida de ducha', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 15000, quantity: 1 },
+  { name: 'Antideslizante ducha', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 10000, quantity: 1 },
+  { name: 'Cortina de baño y forro', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 20000, quantity: 1 },
+  { name: 'Sopapo', category: Category.BATHROOMS, relevance: Relevance.HIGH, price: 5000, quantity: 1 },
   // OTROS
-  { name: 'Aspiradora', category: Category.OTHER, relevance: Relevance.MEDIUM, price: 100000 },
-  { name: 'Set de ampolletas LED', category: Category.OTHER, relevance: Relevance.HIGH, price: 25000 },
-  { name: 'Arrimo para entrada', category: Category.OTHER, relevance: Relevance.LOW, price: 70000 },
-  { name: 'Espejo cuerpo completo', category: Category.OTHER, relevance: Relevance.LOW, price: 50000 },
-  { name: 'Set de herramientas básico', category: Category.OTHER, relevance: Relevance.MEDIUM, price: 30000 },
-  { name: 'Alargador / Zapatilla eléctrica (x3)', category: Category.OTHER, relevance: Relevance.HIGH, price: 15000 },
+  { name: 'Aspiradora', category: Category.OTHER, relevance: Relevance.MEDIUM, price: 100000, quantity: 1 },
+  { name: 'Set de ampolletas LED', category: Category.OTHER, relevance: Relevance.HIGH, price: 25000, quantity: 1 },
+  { name: 'Arrimo para entrada', category: Category.OTHER, relevance: Relevance.LOW, price: 70000, quantity: 1 },
+  { name: 'Espejo cuerpo completo', category: Category.OTHER, relevance: Relevance.LOW, price: 50000, quantity: 1 },
+  { name: 'Set de herramientas básico', category: Category.OTHER, relevance: Relevance.MEDIUM, price: 30000, quantity: 1 },
+  { name: 'Alargador / Zapatilla eléctrica (x3)', category: Category.OTHER, relevance: Relevance.HIGH, price: 15000, quantity: 1 },
   // TERRAZA 1
-  { name: 'Barra con 2 pisos', category: Category.TERRACE_1, relevance: Relevance.LOW, price: 120000 },
+  { name: 'Barra con 2 pisos', category: Category.TERRACE_1, relevance: Relevance.LOW, price: 120000, quantity: 1 },
   // TERRAZA 2
-  { name: 'Juego de terraza (2 sillas y mesa)', category: Category.TERRACE_2, relevance: Relevance.LOW, price: 150000 },
-  { name: 'Planta decorativa', category: Category.TERRACE_2, relevance: Relevance.LOW, price: 30000 },
+  { name: 'Juego de terraza (2 sillas y mesa)', category: Category.TERRACE_2, relevance: Relevance.LOW, price: 150000, quantity: 1 },
+  { name: 'Planta decorativa', category: Category.TERRACE_2, relevance: Relevance.LOW, price: 30000, quantity: 1 },
 ];
 
 // =================================================================================
@@ -296,10 +310,8 @@ const firebaseConfig = {
   messagingSenderId: "615469691845",
   appId: "1:615469691845:web:27c56ecd5d0a3df3b851ac"
 };
-// FIX: Updated Firebase initialization to use the compat syntax.
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const itemsCollection = db.collection('items');
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 // Gemini Service
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -431,7 +443,7 @@ const Dashboard: React.FC<{
     const totalItems = items.length;
     const completedItems = items.filter(item => item.completed).length;
     const progress = totalItems > 0 ? (completedItems / totalItems) : 0;
-    const completedCost = items.filter(item => item.completed).reduce((sum, item) => sum + item.price, 0);
+    const completedCost = items.filter(item => item.completed).reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
 
     const relevanceStats = useMemo(() => {
         const initialStats: Record<Relevance, { total: number, completed: number }> = {
@@ -709,11 +721,11 @@ const CategoryItemsModal: React.FC<{
                                          {item.completed && <CheckIcon className="h-4 w-4 text-white" />}
                                        </div>
                                        <span className={`${item.completed ? 'line-through' : 'font-medium text-gray-700'}`}>
-                                          {item.name}
+                                          {item.name} {item.quantity > 1 && `(x${item.quantity})`}
                                        </span>
                                     </div>
                                     <span className={`font-semibold ${item.completed ? 'line-through' : 'text-gray-800'}`}>
-                                        {formatCurrency(item.price)}
+                                        {formatCurrency(item.price * (item.quantity || 1))}
                                     </span>
                                 </li>
                             ))
@@ -737,6 +749,8 @@ const EditItemModal: React.FC<{
     const [price, setPrice] = useState(new Intl.NumberFormat('es-CL').format(item.price));
     const [category, setCategory] = useState<Category>(item.category);
     const [relevance, setRelevance] = useState<Relevance>(item.relevance);
+    const [quantity, setQuantity] = useState((item.quantity || 1).toString());
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -746,7 +760,8 @@ const EditItemModal: React.FC<{
                 name,
                 price: parseInt(price.replace(/\./g, ''), 10),
                 category,
-                relevance
+                relevance,
+                quantity: parseInt(quantity, 10) || 1
             });
             onClose();
         }
@@ -793,25 +808,39 @@ const EditItemModal: React.FC<{
                             </select>
                         </div>
                     </div>
-                    <div>
-                        <label htmlFor="editItemPrice" className="block text-sm font-medium text-gray-700">Precio (CLP) *</label>
-                        <div className="relative mt-1">
-                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                <span className="text-gray-400 sm:text-sm">$</span>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="editItemPrice" className="block text-sm font-medium text-gray-700">Precio (CLP) *</label>
+                            <div className="relative mt-1">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <span className="text-gray-400 sm:text-sm">$</span>
+                                </div>
+                                <input
+                                    id="editItemPrice"
+                                    type="text"
+                                    value={price}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/\D/g, '');
+                                        if (value === '') {
+                                            setPrice('');
+                                        } else {
+                                            setPrice(new Intl.NumberFormat('es-CL').format(Number(value)));
+                                        }
+                                    }}
+                                    className="w-full pl-7 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                                    required
+                                />
                             </div>
-                            <input
-                                id="editItemPrice"
-                                type="text"
-                                value={price}
-                                onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '');
-                                    if (value === '') {
-                                        setPrice('');
-                                    } else {
-                                        setPrice(new Intl.NumberFormat('es-CL').format(Number(value)));
-                                    }
-                                }}
-                                className="w-full pl-7 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                        </div>
+                        <div>
+                             <label htmlFor="editItemQuantity" className="block text-sm font-medium text-gray-700">Cantidad *</label>
+                             <input
+                                id="editItemQuantity"
+                                type="number"
+                                value={quantity}
+                                onChange={(e) => setQuantity(e.target.value)}
+                                min="1"
+                                className="mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
                                 required
                             />
                         </div>
@@ -874,6 +903,8 @@ const ItemCompra: React.FC<{
         [Relevance.LOW]: 'bg-green-100 text-green-700',
     };
 
+    const quantity = item.quantity || 1;
+
     return (
         <li className="group flex items-center p-3 bg-white rounded-xl shadow-sm border border-gray-100 transition-all duration-200">
             <button
@@ -885,7 +916,9 @@ const ItemCompra: React.FC<{
             </button>
             
             <div className={`flex-grow ${item.completed ? 'text-gray-400' : ''}`}>
-                <p className={`font-semibold text-gray-800 ${item.completed ? 'line-through' : ''}`}>{item.name}</p>
+                <p className={`font-semibold text-gray-800 ${item.completed ? 'line-through' : ''}`}>
+                    {item.name} {quantity > 1 && <span className="font-normal text-gray-500">(x{quantity})</span>}
+                </p>
                 <div className="flex items-center space-x-2 text-sm mt-1">
                     <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${relevancePillStyles[item.relevance]}`}>
                         {item.relevance}
@@ -903,9 +936,16 @@ const ItemCompra: React.FC<{
             </div>
 
             <div className="ml-4 flex items-center space-x-2">
-                 <p className={`font-bold text-lg ${item.completed ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
-                    {formatCurrency(item.price)}
-                </p>
+                <div className="text-right">
+                    <p className={`font-bold text-lg ${item.completed ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                        {formatCurrency(item.price * quantity)}
+                    </p>
+                    {quantity > 1 && (
+                        <p className={`text-xs ${item.completed ? 'text-gray-400 line-through' : 'text-gray-500'}`}>
+                            {formatCurrency(item.price)} c/u
+                        </p>
+                    )}
+                </div>
                 <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <button onClick={() => onEdit(item)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded-full" aria-label={`Editar ${item.name}`}>
                         <PencilIcon className="h-5 w-5" />
@@ -924,15 +964,23 @@ const FormularioAgregarItem: React.FC<{ onAddItem: (item: Omit<Item, 'id' | 'com
     const [price, setPrice] = useState('');
     const [category, setCategory] = useState<Category | ''>('');
     const [relevance, setRelevance] = useState<Relevance>(Relevance.MEDIUM);
+    const [quantity, setQuantity] = useState('1');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (name && price && category) {
-            onAddItem({ name, price: parseInt(price.replace(/\./g, ''), 10), category, relevance });
+            onAddItem({ 
+                name, 
+                price: parseInt(price.replace(/\./g, ''), 10), 
+                category, 
+                relevance,
+                quantity: parseInt(quantity, 10) || 1 
+            });
             setName('');
             setPrice('');
             setCategory('');
             setRelevance(Relevance.MEDIUM);
+            setQuantity('1');
         }
     };
 
@@ -976,26 +1024,40 @@ const FormularioAgregarItem: React.FC<{ onAddItem: (item: Omit<Item, 'id' | 'com
                         </select>
                     </div>
                 </div>
-                <div>
-                     <label htmlFor="itemPrice" className="block text-sm font-medium text-gray-700">Precio (CLP) *</label>
-                    <div className="relative mt-1">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <span className="text-gray-400 sm:text-sm">$</span>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div>
+                         <label htmlFor="itemPrice" className="block text-sm font-medium text-gray-700">Precio (CLP) *</label>
+                        <div className="relative mt-1">
+                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                <span className="text-gray-400 sm:text-sm">$</span>
+                            </div>
+                            <input
+                                id="itemPrice"
+                                type="text"
+                                value={price}
+                                onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '');
+                                    if (value === '') {
+                                        setPrice('');
+                                    } else {
+                                        setPrice(new Intl.NumberFormat('es-CL').format(Number(value)));
+                                    }
+                                }}
+                                placeholder="80.000"
+                                className="w-full pl-7 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 placeholder-gray-400"
+                                required
+                            />
                         </div>
-                        <input
-                            id="itemPrice"
-                            type="text"
-                            value={price}
-                            onChange={(e) => {
-                                const value = e.target.value.replace(/\D/g, '');
-                                if (value === '') {
-                                    setPrice('');
-                                } else {
-                                    setPrice(new Intl.NumberFormat('es-CL').format(Number(value)));
-                                }
-                            }}
-                            placeholder="80.000"
-                            className="w-full pl-7 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 placeholder-gray-400"
+                    </div>
+                     <div>
+                         <label htmlFor="itemQuantity" className="block text-sm font-medium text-gray-700">Cantidad *</label>
+                         <input
+                            id="itemQuantity"
+                            type="number"
+                            value={quantity}
+                            onChange={(e) => setQuantity(e.target.value)}
+                            min="1"
+                            className="mt-1 w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
                             required
                         />
                     </div>
@@ -1052,7 +1114,7 @@ const SuggestionsSection: React.FC<{ onAddSuggestion: (item: Omit<Item, 'id'|'co
                                 <p className="font-semibold text-gray-700">{sug.name}</p>
                                 <p className="text-sm text-gray-500">{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(sug.price)} - {sug.relevance}</p>
                             </div>
-                            <button onClick={() => onAddSuggestion({...sug, category})} className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full" aria-label={`Agregar ${sug.name}`}>
+                            <button onClick={() => onAddSuggestion({...sug, category, quantity: 1})} className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full" aria-label={`Agregar ${sug.name}`}>
                                 <PlusIcon className="h-5 w-5" />
                             </button>
                         </li>
@@ -1071,7 +1133,9 @@ const Filters: React.FC<{
   relevanceFilters: Set<Relevance>;
   setRelevanceFilters: (filters: Set<Relevance>) => void;
   categoryCounts: Map<Category | null, number>;
-}> = ({ activeCategory, setActiveCategory, statusFilter, setStatusFilter, relevanceFilters, setRelevanceFilters, categoryCounts }) => {
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+}> = ({ activeCategory, setActiveCategory, statusFilter, setStatusFilter, relevanceFilters, setRelevanceFilters, categoryCounts, searchQuery, setSearchQuery }) => {
     
     const handleRelevanceToggle = (relevance: Relevance) => {
         const newFilters = new Set(relevanceFilters);
@@ -1096,8 +1160,22 @@ const Filters: React.FC<{
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+            {/* Search Bar */}
+            <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <SearchIcon className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="block w-full rounded-lg border-0 bg-gray-100 py-2.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    placeholder="Buscar por nombre..."
+                />
+            </div>
+            
             {/* Category Tabs */}
-            <div className="flex space-x-1 sm:space-x-2 border-b border-gray-200 overflow-x-auto pb-0 -mx-4 px-4 horizontal-scroll-cards" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="mt-4 flex space-x-1 sm:space-x-2 border-b border-gray-200 overflow-x-auto pb-0 -mx-4 px-4 horizontal-scroll-cards" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {categoryTabs.map(cat => {
                     const count = categoryCounts.get(cat.id);
                     const isVisible = cat.id === null || (count !== undefined && count > 0) || CATEGORIES.some(c => c.id === cat.id);
@@ -1110,7 +1188,7 @@ const Filters: React.FC<{
                         className={`flex-shrink-0 flex items-center space-x-2 py-3 px-3 sm:px-4 text-sm font-semibold transition-colors border-b-2 ${activeCategory === cat.id ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-800'}`}
                     >
                         <cat.icon className="h-5 w-5" />
-                        <span className="hidden sm:inline">{cat.name}</span>
+                        <span>{cat.name}</span>
                         {count !== undefined && (
                             <span className={`ml-1.5 text-xs font-mono px-2 py-0.5 rounded-full transition-colors ${activeCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
                                 {count}
@@ -1122,24 +1200,19 @@ const Filters: React.FC<{
             </div>
             <style>{`.horizontal-scroll-cards::-webkit-scrollbar { display: none; }`}</style>
             
-            {/* Smart Filters Bar */}
-            <div className="mt-4 space-y-3">
-                <div className="flex items-center gap-x-3">
-                    <span className="text-sm font-bold text-gray-600">Filtros:</span>
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => setStatusFilter('Pendientes')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Pendientes' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Pendientes</button>
-                        <button onClick={() => setStatusFilter('Completados')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Completados' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Completados</button>
-                    </div>
-                </div>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        {relevanceFilterConfig.map(rel => (
-                            <button key={rel.id} onClick={() => handleRelevanceToggle(rel.id)} className={`px-3 py-1 text-sm font-semibold rounded-full ${relevanceFilters.has(rel.id) ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>
-                                {rel.label}
-                            </button>
-                        ))}
-                    </div>
+            {/* Filter Pills */}
+            <div className="mt-4 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    <button onClick={() => setStatusFilter('Pendientes')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Pendientes' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Pendientes</button>
+                    <button onClick={() => setStatusFilter('Completados')} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Completados' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Completados</button>
                     <button onClick={() => { setStatusFilter('Todos'); setRelevanceFilters(new Set()); }} className={`px-3 py-1 text-sm font-semibold rounded-full ${statusFilter === 'Todos' && relevanceFilters.size === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Ver Todos</button>
+                </div>
+                 <div className="flex flex-wrap items-center gap-2">
+                    {relevanceFilterConfig.map(rel => (
+                        <button key={rel.id} onClick={() => handleRelevanceToggle(rel.id)} className={`px-3 py-1 text-sm font-semibold rounded-full ${relevanceFilters.has(rel.id) ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}>
+                            {rel.label}
+                        </button>
+                    ))}
                 </div>
             </div>
         </div>
@@ -1159,18 +1232,20 @@ const App: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<'Pendientes' | 'Completados' | 'Todos'>('Pendientes');
     const [relevanceFilters, setRelevanceFilters] = useState<Set<Relevance>>(new Set());
     const [activeCategory, setActiveCategory] = useState<Category | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
-      const q = itemsCollection.orderBy('name');
-      const unsubscribe = q.onSnapshot((querySnapshot) => {
+      const itemsQuery = query(collection(db, 'items'), orderBy('name'));
+      const unsubscribe = onSnapshot(itemsQuery, (querySnapshot) => {
         const itemsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
         setItems(itemsData);
         setLoading(false);
 
         if (itemsData.length === 0) {
-            const batch = db.batch();
+            const batch = writeBatch(db);
+            const itemsCol = collection(db, 'items');
             initialItems.forEach(item => {
-                const docRef = db.collection('items').doc();
+                const docRef = doc(itemsCol);
                 batch.set(docRef, { ...item, completed: false, completedBy: null });
             });
             batch.commit();
@@ -1180,12 +1255,12 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const budgetDocRef = db.collection('app_config').doc('budget');
-        const unsubscribe = budgetDocRef.onSnapshot((doc) => {
-            if (doc.exists) {
-                setTotalBudget(doc.data()?.total || 5000000);
+        const budgetDocRef = doc(db, 'app_config', 'budget');
+        const unsubscribe = onSnapshot(budgetDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setTotalBudget(docSnap.data()?.total || 5000000);
             } else {
-                budgetDocRef.set({ total: 5000000 });
+                setDoc(budgetDocRef, { total: 5000000 });
             }
         });
         return () => unsubscribe();
@@ -1193,16 +1268,16 @@ const App: React.FC = () => {
 
     const handleAddItem = async (item: Omit<Item, 'id' | 'completed' | 'completedBy'>) => {
         try {
-            await itemsCollection.add({ ...item, completed: false, completedBy: null });
+            await addDoc(collection(db, 'items'), { ...item, completed: false, completedBy: null });
         } catch (error) {
             console.error("Error adding item: ", error);
         }
     };
     
     const handleToggleComplete = async (id: string, completed: boolean) => {
-        const itemRef = db.collection('items').doc(id);
+        const itemRef = doc(db, 'items', id);
         try {
-            await itemRef.update({
+            await updateDoc(itemRef, {
                 completed: completed,
                 completedBy: completed ? currentUser : null
             });
@@ -1220,9 +1295,9 @@ const App: React.FC = () => {
 
 
     const handleUpdateBudget = async (newBudget: number) => {
-        const budgetDocRef = db.collection('app_config').doc('budget');
+        const budgetDocRef = doc(db, 'app_config', 'budget');
         try {
-            await budgetDocRef.set({ total: newBudget });
+            await setDoc(budgetDocRef, { total: newBudget });
         } catch (error) {
             console.error("Error updating budget: ", error);
         }
@@ -1230,9 +1305,9 @@ const App: React.FC = () => {
 
     const handleUpdateItem = async (updatedItem: Item) => {
         const { id, ...dataToUpdate } = updatedItem;
-        const itemRef = db.collection('items').doc(id);
+        const itemRef = doc(db, 'items', id);
         try {
-            await itemRef.update(dataToUpdate);
+            await updateDoc(itemRef, dataToUpdate);
             setEditingItem(null); // Close modal
         } catch (error) {
             console.error("Error updating item: ", error);
@@ -1241,9 +1316,9 @@ const App: React.FC = () => {
 
     const handleDeleteItem = async (id: string) => {
         if (window.confirm('¿Estás seguro de que quieres eliminar este item?')) {
-            const itemRef = db.collection('items').doc(id);
+            const itemRef = doc(db, 'items', id);
             try {
-                await itemRef.delete();
+                await deleteDoc(itemRef);
             } catch (error) {
                 console.error("Error deleting item: ", error);
             }
@@ -1253,6 +1328,10 @@ const App: React.FC = () => {
     const preFilteredItems = useMemo(() => {
        return items
             .filter(item => {
+                if (!searchQuery) return true;
+                return item.name.toLowerCase().includes(searchQuery.toLowerCase());
+            })
+            .filter(item => {
                 if (statusFilter === 'Pendientes') return !item.completed;
                 if (statusFilter === 'Completados') return item.completed;
                 return true;
@@ -1261,7 +1340,7 @@ const App: React.FC = () => {
                 if (relevanceFilters.size === 0) return true;
                 return relevanceFilters.has(item.relevance);
             });
-    }, [items, statusFilter, relevanceFilters]);
+    }, [items, statusFilter, relevanceFilters, searchQuery]);
 
     const filteredItems = useMemo(() => {
         return preFilteredItems.filter(item => {
@@ -1319,6 +1398,8 @@ const App: React.FC = () => {
                     relevanceFilters={relevanceFilters} setRelevanceFilters={setRelevanceFilters}
                     activeCategory={activeCategory} setActiveCategory={setActiveCategory}
                     categoryCounts={categoryCounts}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
                   />
                 </div>
 
