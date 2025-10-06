@@ -576,7 +576,7 @@ const Dashboard: React.FC<{
                     </div>
                 ) : (
                     <div>
-                        <p className="text-3xl font-bold text-gray-800">${formatCurrency(completedCost)} / ${formatCurrency(totalBudget)}</p>
+                        <p className="text-2xl font-bold text-gray-800">${formatCurrency(completedCost)} / ${formatCurrency(totalBudget)}</p>
                         <p className="text-sm font-medium text-gray-500 mt-1">Resta: ${formatCurrency(totalBudget - completedCost)}</p>
                          <div className="w-full bg-gray-200 rounded-full h-1.5 mt-3">
                             <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${totalBudget > 0 ? (completedCost / totalBudget) * 100 : 0}%` }}></div>
@@ -664,7 +664,7 @@ const ProgressBySpace: React.FC<{ items: Item[]; onCategoryClick: (category: Cat
 
     return (
         <section className="mt-6 mb-2">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Progreso por Espacio</h2>
+            <h2 className="text-lg font-bold text-gray-800 mb-4">Progreso por Espacio</h2>
             <div className="flex space-x-4 overflow-x-auto pb-4 horizontal-scroll-cards" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {CATEGORIES
                     .filter(cat => statsByCategory.has(cat.id))
@@ -824,7 +824,7 @@ const CategoryItemsModal: React.FC<{
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center space-x-3">
                         <categoryInfo.icon className="h-7 w-7 text-gray-500" />
-                        <h2 className="text-xl font-bold text-gray-800">Productos de {categoryInfo.name}</h2>
+                        <h2 className="text-lg font-bold text-gray-800">Productos de {categoryInfo.name}</h2>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <XIcon className="h-6 w-6" />
@@ -1063,7 +1063,7 @@ const ConfirmationModal: React.FC<{
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-sm m-4 text-center animate-scale-up">
-                <h2 className="text-xl font-bold text-gray-800 mb-2">{title}</h2>
+                <h2 className="text-lg font-bold text-gray-800 mb-2">{title}</h2>
                 <div className="text-gray-600 mb-6">
                     {children}
                 </div>
@@ -1114,7 +1114,7 @@ const EnterPriceModal: React.FC<{
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-sm m-4 text-center animate-scale-up">
-                <h2 className="text-xl font-bold text-gray-800 mb-2">Ingresar Precio</h2>
+                <h2 className="text-lg font-bold text-gray-800 mb-2">Ingresar Precio</h2>
                 <p className="text-gray-600 mb-6">
                     Para completar <span className="font-semibold text-gray-900">"{item.name}"</span>, por favor ingresa su precio final.
                 </p>
