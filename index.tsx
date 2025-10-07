@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { GoogleGenAI, Type } from "@google/genai";
-// FIX: Aligned Firebase imports to use the modern 'firebase/*' syntax (v9+) for consistency and to resolve SDK version conflicts causing connection issues.
-import { initializeApp } from 'firebase/app';
+// FIX: Changed import path to use scoped @firebase packages, which is a common setup and can resolve module loading issues.
+import { initializeApp } from '@firebase/app';
 import { 
     getFirestore, 
     collection, 
@@ -17,7 +17,7 @@ import {
     writeBatch,
     serverTimestamp,
     getDoc
-} from 'firebase/firestore';
+} from '@firebase/firestore';
 
 
 // =================================================================================
@@ -447,8 +447,9 @@ const Dashboard: React.FC<{
     items: Item[]; 
     totalBudget: number; 
     onUpdateBudget: (newBudget: number) => void;
-    onViewRelevance: (relevance: Relevance) => void;
-}> = ({ items, totalBudget, onUpdateBudget, onViewRelevance }) => {
+    setRelevanceFilters: (filters: Set<Relevance>) => void;
+    setStatusFilter: (status: 'Pendientes' | 'Completados' | 'Todos') => void;
+}> = ({ items, totalBudget, onUpdateBudget, setRelevanceFilters, setStatusFilter }) => {
     const [isEditingBudget, setIsEditingBudget] = useState(false);
     const [editedBudget, setEditedBudget] = useState('');
 
@@ -501,7 +502,8 @@ const Dashboard: React.FC<{
     };
     
     const handleRelevanceClick = (relevance: Relevance) => {
-        onViewRelevance(relevance);
+        setRelevanceFilters(new Set([relevance]));
+        setStatusFilter('Todos');
     };
 
     const radius = 50;
@@ -576,7 +578,7 @@ const Dashboard: React.FC<{
                     </div>
                 ) : (
                     <div>
-                        <p className="text-2xl font-bold text-gray-800">${formatCurrency(completedCost)} / ${formatCurrency(totalBudget)}</p>
+                        <p className="text-3xl font-bold text-gray-800">${formatCurrency(completedCost)} / ${formatCurrency(totalBudget)}</p>
                         <p className="text-sm font-medium text-gray-500 mt-1">Resta: ${formatCurrency(totalBudget - completedCost)}</p>
                          <div className="w-full bg-gray-200 rounded-full h-1.5 mt-3">
                             <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${totalBudget > 0 ? (completedCost / totalBudget) * 100 : 0}%` }}></div>
@@ -664,7 +666,7 @@ const ProgressBySpace: React.FC<{ items: Item[]; onCategoryClick: (category: Cat
 
     return (
         <section className="mt-6 mb-2">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Progreso por Espacio</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Progreso por Espacio</h2>
             <div className="flex space-x-4 overflow-x-auto pb-4 horizontal-scroll-cards" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {CATEGORIES
                     .filter(cat => statsByCategory.has(cat.id))
@@ -793,29 +795,6 @@ const CategoryItemsModal: React.FC<{
     const categoryItems = items.filter(item => item.category === category);
     const formatCurrency = (value: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
-    const sortedCategoryItems = useMemo(() => {
-        const relevanceOrder = {
-            [Relevance.HIGH]: 0,
-            [Relevance.MEDIUM]: 1,
-            [Relevance.LOW]: 2,
-        };
-        return [...categoryItems].sort((a, b) => {
-            // 1. Incomplete items come before completed items
-            if (a.completed !== b.completed) {
-                return a.completed ? 1 : -1;
-            }
-            // 2. For incomplete items, sort by relevance (High > Medium > Low)
-            if (!a.completed) {
-                const relevanceComparison = relevanceOrder[a.relevance] - relevanceOrder[b.relevance];
-                if (relevanceComparison !== 0) {
-                    return relevanceComparison;
-                }
-            }
-            // 3. As a tie-breaker (or for completed items), sort alphabetically
-            return a.name.localeCompare(b.name);
-        });
-    }, [categoryItems]);
-
     if (!categoryInfo) return null;
 
     return (
@@ -824,7 +803,7 @@ const CategoryItemsModal: React.FC<{
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center space-x-3">
                         <categoryInfo.icon className="h-7 w-7 text-gray-500" />
-                        <h2 className="text-lg font-bold text-gray-800">Productos de {categoryInfo.name}</h2>
+                        <h2 className="text-xl font-bold text-gray-800">Productos de {categoryInfo.name}</h2>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <XIcon className="h-6 w-6" />
@@ -832,62 +811,8 @@ const CategoryItemsModal: React.FC<{
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto pr-2">
                     <ul className="space-y-3">
-                        {sortedCategoryItems.length > 0 ? (
-                            sortedCategoryItems.map(item => (
-                                <li key={item.id} className={`flex justify-between items-center p-3 rounded-lg ${item.completed ? 'bg-gray-50 text-gray-400' : 'bg-white'}`}>
-                                    <div className="flex items-center space-x-3 min-w-0">
-                                        <div className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center border-2 ${item.completed ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
-                                            {item.completed && <CheckIcon className="h-4 w-4 text-white" />}
-                                        </div>
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <span className={`${item.completed ? 'line-through' : 'font-medium text-gray-700'} truncate`}>
-                                                {item.name} {item.quantity > 1 && `(x${item.quantity})`}
-                                            </span>
-                                            <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold ${RELEVANCE_STYLES[item.relevance].bg} ${RELEVANCE_STYLES[item.relevance].text}`}>
-                                                {item.relevance}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <span className={`font-semibold flex-shrink-0 ml-4 ${item.completed ? 'line-through' : 'text-gray-800'}`}>
-                                        {formatCurrency(item.price * (item.quantity || 1))}
-                                    </span>
-                                </li>
-                            ))
-                        ) : (
-                            <p className="text-center text-gray-500 py-4">No hay productos en esta categoría.</p>
-                        )}
-                    </ul>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const RelevanceItemsModal: React.FC<{
-    relevance: Relevance;
-    items: Item[];
-    onClose: () => void;
-}> = ({ relevance, items, onClose }) => {
-    const relevanceStyle = RELEVANCE_STYLES[relevance];
-    const relevanceItems = items.filter(item => item.relevance === relevance);
-    const formatCurrency = (value: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-lg m-4">
-                <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center space-x-3">
-                        <span className={`h-4 w-4 rounded-full ${relevanceStyle.dot}`}></span>
-                        <h2 className={`text-lg font-bold ${relevanceStyle.text}`}>Productos de Relevancia {relevance}</h2>
-                    </div>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                        <XIcon className="h-6 w-6" />
-                    </button>
-                </div>
-                <div className="max-h-[60vh] overflow-y-auto pr-2">
-                    <ul className="space-y-3">
-                        {relevanceItems.length > 0 ? (
-                            relevanceItems.map(item => (
+                        {categoryItems.length > 0 ? (
+                            categoryItems.map(item => (
                                 <li key={item.id} className={`flex justify-between items-center p-3 rounded-lg ${item.completed ? 'bg-gray-50 text-gray-400' : 'bg-white'}`}>
                                     <div className="flex items-center space-x-3">
                                        <div className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center border-2 ${item.completed ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
@@ -903,7 +828,7 @@ const RelevanceItemsModal: React.FC<{
                                 </li>
                             ))
                         ) : (
-                            <p className="text-center text-gray-500 py-4">No hay productos con esta relevancia.</p>
+                            <p className="text-center text-gray-500 py-4">No hay productos en esta categoría.</p>
                         )}
                     </ul>
                 </div>
@@ -1063,7 +988,7 @@ const ConfirmationModal: React.FC<{
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-sm m-4 text-center animate-scale-up">
-                <h2 className="text-lg font-bold text-gray-800 mb-2">{title}</h2>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">{title}</h2>
                 <div className="text-gray-600 mb-6">
                     {children}
                 </div>
@@ -1114,7 +1039,7 @@ const EnterPriceModal: React.FC<{
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-sm m-4 text-center animate-scale-up">
-                <h2 className="text-lg font-bold text-gray-800 mb-2">Ingresar Precio</h2>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Ingresar Precio</h2>
                 <p className="text-gray-600 mb-6">
                     Para completar <span className="font-semibold text-gray-900">"{item.name}"</span>, por favor ingresa su precio final.
                 </p>
@@ -1577,7 +1502,6 @@ const App: React.FC = () => {
     const [totalBudget, setTotalBudget] = useState(5000000); // Default budget
     const [editingItem, setEditingItem] = useState<Item | null>(null);
     const [viewingCategory, setViewingCategory] = useState<Category | null>(null);
-    const [viewingRelevance, setViewingRelevance] = useState<Relevance | null>(null);
     const [confirmingToggle, setConfirmingToggle] = useState<{ id: string; name: string; completed: boolean } | null>(null);
     const [itemRequiringPrice, setItemRequiringPrice] = useState<Item | null>(null);
     const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
@@ -1828,34 +1752,11 @@ const App: React.FC = () => {
     }, [visibleItems, statusFilter, relevanceFilters, searchQuery]);
 
     const filteredItems = useMemo(() => {
-        const relevanceOrder = {
-            [Relevance.HIGH]: 0,
-            [Relevance.MEDIUM]: 1,
-            [Relevance.LOW]: 2,
-        };
-    
-        const sorted = [...preFilteredItems].sort((a, b) => {
-            // 1. Incomplete items come before completed items
-            if (a.completed !== b.completed) {
-                return a.completed ? 1 : -1;
-            }
-    
-            // 2. For incomplete items, sort by relevance (High > Medium > Low)
-            if (!a.completed) {
-                const relevanceComparison = relevanceOrder[a.relevance] - relevanceOrder[b.relevance];
-                if (relevanceComparison !== 0) {
-                    return relevanceComparison;
-                }
-            }
-            
-            // 3. As a tie-breaker (or for completed items), sort alphabetically
-            return a.name.localeCompare(b.name);
-        });
-    
+        const sorted = [...preFilteredItems].sort((a, b) => a.name.localeCompare(b.name));
         return sorted.filter(item => {
-            if (!activeCategory) return true;
-            return item.category === activeCategory;
-        });
+                if (!activeCategory) return true;
+                return item.category === activeCategory;
+            });
     }, [preFilteredItems, activeCategory]);
 
     const activityFeedItems = useMemo(() => {
@@ -1926,7 +1827,8 @@ const App: React.FC = () => {
                         items={visibleItems} 
                         totalBudget={totalBudget} 
                         onUpdateBudget={handleUpdateBudget}
-                        onViewRelevance={setViewingRelevance}
+                        setRelevanceFilters={setRelevanceFilters}
+                        setStatusFilter={setStatusFilter}
                     />
                 </div>
                 
@@ -2018,13 +1920,6 @@ const App: React.FC = () => {
                     category={viewingCategory}
                     items={visibleItems}
                     onClose={() => setViewingCategory(null)}
-                />
-            )}
-             {viewingRelevance && (
-                <RelevanceItemsModal
-                    relevance={viewingRelevance}
-                    items={visibleItems}
-                    onClose={() => setViewingRelevance(null)}
                 />
             )}
             {confirmingToggle && (
