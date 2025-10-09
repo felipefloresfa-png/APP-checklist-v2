@@ -10,16 +10,5 @@
     { "src": "timeUtils.ts", "use": "@vercel/static" },
     { "src": "components/**", "use": "@vercel/static" },
     { "src": "services/**", "use": "@vercel/static" }
-  ],
-  "headers": [
-    {
-      "source": "/(.*\\.(?:tsx|ts))",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/javascript; charset=utf-8"
-        }
-      ]
-    }
   ]
 }
