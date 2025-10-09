@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 
 export const BathroomIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

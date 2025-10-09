@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import * as React from 'react';
 import { Item, User } from '../types';
 import { ClockIcon, CheckIcon, UserIcon, TrashIcon } from './icons';
 import { formatRelativeTime } from '../timeUtils';
@@ -16,7 +16,7 @@ interface Activity {
 }
 
 const ActividadReciente: React.FC<ActividadRecienteProps> = ({ items }) => {
-    const recentActivity = useMemo(() => {
+    const recentActivity = React.useMemo(() => {
         const activities: Activity[] = [];
 
         for (const item of items) {

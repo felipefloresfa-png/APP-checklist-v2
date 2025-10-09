@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import * as React from 'react';
 import { Item, Category, Relevance, User } from '../types';
 import { CATEGORIES } from '../constants';
 import { PlusCircleIcon } from './icons';
@@ -17,15 +17,15 @@ const AddItemForm: React.FC<{
     onAddItems: (items: Omit<Item, 'id' | 'completedQuantity'>[]) => void; 
     currentUser: User;
 }> = ({ onAddItems, currentUser }) => {
-    const [name, setName] = useState('');
-    const [quantity, setQuantity] = useState('1');
-    const [relevance, setRelevance] = useState<Relevance>(Relevance.MEDIUM);
+    const [name, setName] = React.useState('');
+    const [quantity, setQuantity] = React.useState('1');
+    const [relevance, setRelevance] = React.useState<Relevance>(Relevance.MEDIUM);
     
-    const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
-    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
-    const categoryDropdownRef = useRef<HTMLDivElement>(null);
+    const [selectedCategories, setSelectedCategories] = React.useState<Category[]>([]);
+    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = React.useState(false);
+    const categoryDropdownRef = React.useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
+    React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
                 setIsCategoryDropdownOpen(false);

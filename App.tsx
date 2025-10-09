@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import * as React from 'react';
 import { getFirestore, collection, onSnapshot, query, orderBy, doc, setDoc, addDoc, updateDoc, writeBatch, serverTimestamp, getDoc, getDocs, where, deleteField } from 'firebase/firestore';
 
 import { db } from './services/firebase';
@@ -21,26 +21,26 @@ import EditItemModal from './components/EditItemModal';
 import ConfirmationModal from './components/ConfirmationModal';
 
 const App: React.FC = () => {
-    const [items, setItems] = useState<Item[]>([]);
-    const [currentUser, setCurrentUser] = useState<User>(User.FELIPE);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [totalBudget, setTotalBudget] = useState(0);
+    const [items, setItems] = React.useState<Item[]>([]);
+    const [currentUser, setCurrentUser] = React.useState<User>(User.FELIPE);
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
+    const [totalBudget, setTotalBudget] = React.useState(0);
 
-    const [filterCategory, setFilterCategory] = useState<Category | 'all'>('all');
-    const [filterRelevance, setFilterRelevance] = useState<Relevance | 'all'>('all');
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed'>('all');
+    const [filterCategory, setFilterCategory] = React.useState<Category | 'all'>('all');
+    const [filterRelevance, setFilterRelevance] = React.useState<Relevance | 'all'>('all');
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [filterStatus, setFilterStatus] = React.useState<'all' | 'pending' | 'completed'>('all');
 
-    const [suggestionsCategory, setSuggestionsCategory] = useState<Category | null>(null);
-    const [categoryModal, setCategoryModal] = useState<Category | null>(null);
-    const [editingItem, setEditingItem] = useState<Item | null>(null);
-    const [deletingItem, setDeletingItem] = useState<Item | null>(null);
+    const [suggestionsCategory, setSuggestionsCategory] = React.useState<Category | null>(null);
+    const [categoryModal, setCategoryModal] = React.useState<Category | null>(null);
+    const [editingItem, setEditingItem] = React.useState<Item | null>(null);
+    const [deletingItem, setDeletingItem] = React.useState<Item | null>(null);
     
     const itemsCollection = collection(db, 'items');
     const metadataDoc = doc(db, '_metadata', 'budget');
     
-    useEffect(() => {
+    React.useEffect(() => {
         const runMigration = async () => {
             const migrationDocRef = doc(db, '_metadata', 'migration_v3_completed_quantity_final_fix');
             const migrationDocSnap = await getDoc(migrationDocRef);
@@ -165,7 +165,7 @@ const App: React.FC = () => {
     }, []);
 
 
-    const filteredItems = useMemo(() => {
+    const filteredItems = React.useMemo(() => {
         return items.filter(item => {
             if (item.deleted) return false; // Filter out soft-deleted items
 
@@ -183,7 +183,7 @@ const App: React.FC = () => {
         });
     }, [items, filterCategory, filterRelevance, searchTerm, filterStatus]);
 
-    const sortedItems = useMemo(() => {
+    const sortedItems = React.useMemo(() => {
         return [...filteredItems].sort((a, b) => {
              const aIsCompleted = a.completedQuantity === a.quantity;
              const bIsCompleted = b.completedQuantity === b.quantity;

@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 
 const Loader: React.FC<{ size?: string }> = ({ size = 'h-5 w-5' }) => {
   return (

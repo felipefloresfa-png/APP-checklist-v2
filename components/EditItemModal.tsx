@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
 import { Item, Category, Relevance, User } from '../types';
 import { CATEGORIES } from '../constants';
 import { XIcon } from './icons';
@@ -21,10 +21,10 @@ const labelStyle = "block text-sm font-medium text-gray-700 mb-1.5";
 
 
 const EditItemModal: React.FC<EditItemModalProps> = ({ item, onClose, onSave }) => {
-    const [formData, setFormData] = useState<Partial<Item>>(item);
-    const [formattedPrice, setFormattedPrice] = useState('');
+    const [formData, setFormData] = React.useState<Partial<Item>>(item);
+    const [formattedPrice, setFormattedPrice] = React.useState('');
 
-    useEffect(() => {
+    React.useEffect(() => {
         setFormData(item);
         setFormattedPrice(new Intl.NumberFormat('es-CL').format(item.price));
     }, [item]);

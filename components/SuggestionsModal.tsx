@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
 import { Category, SuggestedItem } from '../types';
 import { getSuggestions } from '../services/geminiService';
 import Loader from './Loader';
@@ -9,12 +9,12 @@ const SuggestionsModal: React.FC<{
     onClose: () => void;
     onAddItems: (items: SuggestedItem[]) => void;
 }> = ({ category, onClose, onAddItems }) => {
-    const [suggestions, setSuggestions] = useState<SuggestedItem[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [selected, setSelected] = useState<number[]>([]);
+    const [suggestions, setSuggestions] = React.useState<SuggestedItem[]>([]);
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
+    const [selected, setSelected] = React.useState<number[]>([]);
 
-    useEffect(() => {
+    React.useEffect(() => {
         const fetchSuggestions = async () => {
             try {
                 setLoading(true);

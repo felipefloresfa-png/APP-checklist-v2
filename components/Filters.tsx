@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import * as React from 'react';
 import { Item, Category, Relevance } from '../types';
 import { CATEGORIES } from '../constants';
 import { SearchIcon, HouseIcon } from './icons';
@@ -26,7 +26,7 @@ const Filters: React.FC<FiltersProps> = ({
     filterStatus,
     setFilterStatus,
 }) => {
-    const categoryCounts = useMemo(() => {
+    const categoryCounts = React.useMemo(() => {
         const counts: { [key in Category | 'all']?: number } = { all: items.length };
         CATEGORIES.forEach(category => {
             counts[category.id] = items.filter(item => item.category === category.id).length;

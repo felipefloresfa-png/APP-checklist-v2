@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 import { Item, Category } from '../types';
 import { CATEGORIES } from '../constants';
 import { XIcon } from './icons';

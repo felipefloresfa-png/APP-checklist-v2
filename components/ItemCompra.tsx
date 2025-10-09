@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import * as React from 'react';
 import { Item } from '../types';
 import { PencilIcon, TrashIcon, CheckIcon, EllipsisHorizontalIcon } from './icons';
 
 const ProgressCircle: React.FC<{ item: Item, onClick: () => void }> = ({ item, onClick }) => {
     const { completedQuantity, quantity } = item;
 
-    const status: 'completed' | 'partial' | 'pending' = useMemo(() => {
+    const status: 'completed' | 'partial' | 'pending' = React.useMemo(() => {
         if (completedQuantity <= 0) return 'pending';
         if (completedQuantity >= quantity) return 'completed';
         return 'partial';
@@ -64,10 +64,10 @@ const ItemCompra: React.FC<{
     onDelete: (id: string) => void;
     onStartEdit: (item: Item) => void;
 }> = ({ item, onUpdateCompletion, onDelete, onStartEdit }) => {
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
+    const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+    const menuRef = React.useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
+    React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
                 setIsMenuOpen(false);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import * as React from 'react';
 import { Item, Relevance } from '../types';
 import { RELEVANCE_STYLES } from '../constants';
 import { PencilIcon, XIcon, CheckIcon } from './icons';
@@ -8,14 +8,14 @@ const Dashboard: React.FC<{
     totalBudget: number; 
     onUpdateBudget: (newBudget: number) => void;
 }> = ({ items, totalBudget, onUpdateBudget }) => {
-    const [isEditingBudget, setIsEditingBudget] = useState(false);
-    const [editedBudget, setEditedBudget] = useState('');
+    const [isEditingBudget, setIsEditingBudget] = React.useState(false);
+    const [editedBudget, setEditedBudget] = React.useState('');
 
-    useEffect(() => {
+    React.useEffect(() => {
         setEditedBudget(new Intl.NumberFormat('es-CL').format(totalBudget));
     }, [totalBudget]);
 
-    const { completedUnits, totalUnits, completedCost } = useMemo(() => {
+    const { completedUnits, totalUnits, completedCost } = React.useMemo(() => {
         let totalUnits = 0;
         let completedUnits = 0;
         let completedCost = 0;
@@ -32,7 +32,7 @@ const Dashboard: React.FC<{
 
     const progress = totalUnits > 0 ? (completedUnits / totalUnits) : 0;
 
-    const relevanceStats = useMemo(() => {
+    const relevanceStats = React.useMemo(() => {
         const initialStats: Record<Relevance, { total: number, completed: number }> = {
             [Relevance.HIGH]: { total: 0, completed: 0 },
             [Relevance.MEDIUM]: { total: 0, completed: 0 },
