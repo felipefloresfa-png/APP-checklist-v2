@@ -1,24 +1,24 @@
 import * as React from 'react';
 import { getFirestore, collection, onSnapshot, query, orderBy, doc, setDoc, addDoc, updateDoc, writeBatch, serverTimestamp, getDoc, getDocs, where, deleteField } from 'firebase/firestore';
 
-import { db } from './services/firebase';
-import { getSuggestions } from './services/geminiService';
-import { Item, User, Category, Relevance, SuggestedItem } from './types';
-import { initialItems } from './initialData';
+import { db } from './services/firebase.ts';
+import { getSuggestions } from './services/geminiService.ts';
+import { Item, User, Category, Relevance, SuggestedItem } from './types.ts';
+import { initialItems } from './initialData.ts';
 
-import Header from './components/Header';
-import Dashboard from './components/Dashboard';
-import AddItemForm from './components/FormularioAgregarItem';
-import Filters from './components/Filters';
-import ListaCompras from './components/ListaCompras';
-import Loader from './components/Loader';
-import SuggestionsModal from './components/SuggestionsModal';
-import UserSwitcher from './components/UserSwitcher';
-import ActividadReciente from './components/ActividadReciente';
-import ProgresoEspacio from './components/ProgresoEspacio';
-import CategoryItemsModal from './components/CategoryItemsModal';
-import EditItemModal from './components/EditItemModal';
-import ConfirmationModal from './components/ConfirmationModal';
+import Header from './components/Header.tsx';
+import Dashboard from './components/Dashboard.tsx';
+import AddItemForm from './components/FormularioAgregarItem.tsx';
+import Filters from './components/Filters.tsx';
+import ListaCompras from './components/ListaCompras.tsx';
+import Loader from './components/Loader.tsx';
+import SuggestionsModal from './components/SuggestionsModal.tsx';
+import UserSwitcher from './components/UserSwitcher.tsx';
+import ActividadReciente from './components/ActividadReciente.tsx';
+import ProgresoEspacio from './components/ProgresoEspacio.tsx';
+import CategoryItemsModal from './components/CategoryItemsModal.tsx';
+import EditItemModal from './components/EditItemModal.tsx';
+import ConfirmationModal from './components/ConfirmationModal.tsx';
 
 const App: React.FC = () => {
     const [items, setItems] = React.useState<Item[]>([]);
