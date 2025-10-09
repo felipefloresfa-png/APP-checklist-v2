@@ -1,20 +1,6 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "**/*",
-      "use": "@vercel/static"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/(.*\\.(ts|tsx))",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/javascript; charset=utf-8"
-        }
-      ]
-    }
+  "rewrites": [
+    { "source": "/:path*.tsx", "destination": "/:path*.tsx" },
+    { "source": "/:path*.ts", "destination": "/:path*.ts" }
   ]
 }
