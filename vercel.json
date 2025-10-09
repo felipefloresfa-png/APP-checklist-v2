@@ -1,3 +1,9 @@
 {
-  "public": true
+  "framework": null,
+  "builds": [
+    {
+      "src": "**/*",
+      "use": "@vercel/static"
+    }
+  ]
 }
