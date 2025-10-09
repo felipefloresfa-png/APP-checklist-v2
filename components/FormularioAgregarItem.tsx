@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Item, Category, Relevance, User } from '../types.ts';
-import { CATEGORIES } from '../constants.ts';
-import { PlusCircleIcon } from './icons.tsx';
+import { Item, Category, Relevance, User } from '../types.js';
+import { CATEGORIES } from '../constants.js';
+import { PlusCircleIcon } from './icons.js';
 
 const selectArrowStyle = {
   backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236B7281' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,

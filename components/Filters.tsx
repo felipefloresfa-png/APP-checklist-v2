@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Item, Category, Relevance } from '../types';
-import { CATEGORIES } from '../constants';
-import { SearchIcon, HouseIcon } from './icons';
+import { Item, Category, Relevance } from '../types.js';
+import { CATEGORIES } from '../constants.js';
+import { SearchIcon, HouseIcon } from './icons.js';
 
 interface FiltersProps {
     items: Item[];

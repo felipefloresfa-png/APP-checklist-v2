@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { User } from '../types';
-import { UserIcon } from './icons';
+import { User } from '../types.js';
+import { UserIcon } from './icons.js';
 
 const UserSwitcher: React.FC<{ currentUser: User; onUserChange: (user: User) => void; }> = ({ currentUser, onUserChange }) => {
   return (

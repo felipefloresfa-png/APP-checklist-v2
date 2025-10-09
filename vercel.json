@@ -1,6 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/:path*.tsx", "destination": "/:path*.tsx" },
-    { "source": "/:path*.ts", "destination": "/:path*.ts" }
-  ]
-}

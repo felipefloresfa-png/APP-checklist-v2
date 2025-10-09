@@ -1,24 +1,24 @@
 import * as React from 'react';
 import { getFirestore, collection, onSnapshot, query, orderBy, doc, setDoc, addDoc, updateDoc, writeBatch, serverTimestamp, getDoc, getDocs, where, deleteField } from 'firebase/firestore';
 
-import { db } from './services/firebase.ts';
-import { getSuggestions } from './services/geminiService.ts';
-import { Item, User, Category, Relevance, SuggestedItem } from './types.ts';
-import { initialItems } from './initialData.ts';
+import { db } from './services/firebase.js';
+import { getSuggestions } from './services/geminiService.js';
+import { Item, User, Category, Relevance, SuggestedItem } from './types.js';
+import { initialItems } from './initialData.js';
 
-import Header from './components/Header.tsx';
-import Dashboard from './components/Dashboard.tsx';
-import AddItemForm from './components/FormularioAgregarItem.tsx';
-import Filters from './components/Filters.tsx';
-import ListaCompras from './components/ListaCompras.tsx';
-import Loader from './components/Loader.tsx';
-import SuggestionsModal from './components/SuggestionsModal.tsx';
-import UserSwitcher from './components/UserSwitcher.tsx';
-import ActividadReciente from './components/ActividadReciente.tsx';
-import ProgresoEspacio from './components/ProgresoEspacio.tsx';
-import CategoryItemsModal from './components/CategoryItemsModal.tsx';
-import EditItemModal from './components/EditItemModal.tsx';
-import ConfirmationModal from './components/ConfirmationModal.tsx';
+import Header from './components/Header.js';
+import Dashboard from './components/Dashboard.js';
+import AddItemForm from './components/FormularioAgregarItem.js';
+import Filters from './components/Filters.js';
+import ListaCompras from './components/ListaCompras.js';
+import Loader from './components/Loader.js';
+import SuggestionsModal from './components/SuggestionsModal.js';
+import UserSwitcher from './components/UserSwitcher.js';
+import ActividadReciente from './components/ActividadReciente.js';
+import ProgresoEspacio from './components/ProgresoEspacio.js';
+import CategoryItemsModal from './components/CategoryItemsModal.js';
+import EditItemModal from './components/EditItemModal.js';
+import ConfirmationModal from './components/ConfirmationModal.js';
 
 function App() {
     const initialItemsState: Item[] = [];

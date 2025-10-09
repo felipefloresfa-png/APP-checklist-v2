@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { HouseIcon } from './icons.tsx';
+import { HouseIcon } from './icons.js';
 
 const Header: React.FC = () => {
     return (

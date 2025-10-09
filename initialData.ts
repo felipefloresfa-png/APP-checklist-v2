@@ -1,4 +1,4 @@
-import { Item, Category, Relevance } from './types';
+import { Item, Category, Relevance } from './types.js';
 
 // FIX: Changed Omit type from 'completed' to 'completedQuantity' to match the Item interface and the intended usage.
 export const initialItems: Omit<Item, 'id' | 'completedQuantity' | 'completedBy' | 'createdAt' | 'completedAt'>[] = [

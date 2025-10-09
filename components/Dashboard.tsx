@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Item, Relevance } from '../types';
-import { RELEVANCE_STYLES } from '../constants';
-import { PencilIcon, XIcon, CheckIcon } from './icons';
+import { Item, Relevance } from '../types.js';
+import { RELEVANCE_STYLES } from '../constants.js';
+import { PencilIcon, XIcon, CheckIcon } from './icons.js';
 
 const Dashboard: React.FC<{ 
     items: Item[]; 

@@ -1,8 +1,8 @@
 import * as React from 'react';
-import { Category, SuggestedItem } from '../types';
-import { getSuggestions } from '../services/geminiService';
-import Loader from './Loader';
-import { SuggestionsIcon, XIcon, PlusIcon } from './icons';
+import { Category, SuggestedItem } from '../types.js';
+import { getSuggestions } from '../services/geminiService.js';
+import Loader from './Loader.js';
+import { SuggestionsIcon, XIcon, PlusIcon } from './icons.js';
 
 const SuggestionsModal: React.FC<{
     category: Category;

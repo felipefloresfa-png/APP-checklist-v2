@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Item, Category, Relevance, User } from '../types';
-import { CATEGORIES } from '../constants';
-import { XIcon } from './icons';
+import { Item, Category, Relevance, User } from '../types.js';
+import { CATEGORIES } from '../constants.js';
+import { XIcon } from './icons.js';
 
 interface EditItemModalProps {
     item: Item;

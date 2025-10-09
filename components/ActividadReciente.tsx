@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Item, User } from '../types';
-import { ClockIcon, CheckIcon, UserIcon, TrashIcon } from './icons';
-import { formatRelativeTime } from '../timeUtils';
+import { Item, User } from '../types.js';
+import { ClockIcon, CheckIcon, UserIcon, TrashIcon } from './icons.js';
+import { formatRelativeTime } from '../timeUtils.js';
 
 interface ActividadRecienteProps {
     items: Item[];
