@@ -1,7 +1,16 @@
 {
   "headers": [
     {
-      "source": "/(.*\\.(ts|tsx))",
+      "source": "/(.*\\.ts)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        }
+      ]
+    },
+    {
+      "source": "/(.*\\.tsx)",
       "headers": [
         {
           "key": "Content-Type",
