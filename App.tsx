@@ -21,7 +21,8 @@ import EditItemModal from './components/EditItemModal.tsx';
 import ConfirmationModal from './components/ConfirmationModal.tsx';
 
 function App() {
-    const [items, setItems] = React.useState<Item[]>([]);
+    const initialItemsState: Item[] = [];
+    const [items, setItems] = React.useState(initialItemsState);
     const [currentUser, setCurrentUser] = React.useState<User>(User.FELIPE);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
