@@ -1,4 +1,16 @@
 {
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "index.tsx", "use": "@vercel/static" },
+    { "src": "App.tsx", "use": "@vercel/static" },
+    { "src": "metadata.json", "use": "@vercel/static" },
+    { "src": "types.ts", "use": "@vercel/static" },
+    { "src": "constants.ts", "use": "@vercel/static" },
+    { "src": "initialData.ts", "use": "@vercel/static" },
+    { "src": "timeUtils.ts", "use": "@vercel/static" },
+    { "src": "components/**", "use": "@vercel/static" },
+    { "src": "services/**", "use": "@vercel/static" }
+  ],
   "headers": [
     {
       "source": "/(.*\\.(?:tsx|ts))",
