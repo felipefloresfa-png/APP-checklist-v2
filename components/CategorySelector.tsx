@@ -1,0 +1,1 @@
+// This component's functionality is now part of Filters.tsx

@@ -1,1 +1,1 @@
-// This component is no longer used in the new design.
+// This component is not currently used. Empty state logic is in ListaCompras.tsx
