@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Item, Relevance } from '../types.js';
-import { PencilIcon, TrashIcon, CheckIcon, EllipsisHorizontalIcon } from './icons.js';
-import { RELEVANCE_STYLES } from '../constants.js';
+import { Item, Relevance } from '../types.ts';
+import { PencilIcon, TrashIcon, CheckIcon, EllipsisHorizontalIcon } from './icons.tsx';
+import { RELEVANCE_STYLES } from '../constants.ts';
 
 const ProgressCircle: React.FC<{ item: Item, onClick: () => void }> = ({ item, onClick }) => {
     const { completedQuantity, quantity } = item;

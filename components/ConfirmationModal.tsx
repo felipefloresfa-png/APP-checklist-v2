@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Item } from '../types.js';
+import { Item } from '../types.ts';
 
 interface ConfirmationModalProps {
     isOpen: boolean;

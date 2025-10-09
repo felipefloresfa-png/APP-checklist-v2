@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Item, Category } from '../types.js';
-import { CATEGORIES } from '../constants.js';
-import { HouseIcon } from './icons.js';
+import { Item, Category } from '../types.ts';
+import { CATEGORIES } from '../constants.ts';
+import { HouseIcon } from './icons.tsx';
 
 interface ProgresoEspacioProps {
     items: Item[];

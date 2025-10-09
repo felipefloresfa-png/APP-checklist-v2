@@ -1,7 +1,19 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Category, Relevance } from '../types.js';
+import { Category, Relevance } from '../types.ts';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let ai: GoogleGenAI | null = null;
+
+try {
+  const apiKey = process.env.API_KEY;
+  if (apiKey && apiKey.trim() !== '') {
+    ai = new GoogleGenAI({ apiKey });
+  } else {
+    console.warn("Gemini API key is not configured. AI features will be disabled.");
+  }
+} catch (error: any) {
+    console.error("Failed to initialize Gemini AI:", error.message);
+}
+
 
 export interface SuggestedItemResponse {
   name: string;
@@ -10,6 +22,10 @@ export interface SuggestedItemResponse {
 }
 
 export const getSuggestions = async (category: Category): Promise<SuggestedItemResponse[]> => {
+  if (!ai) {
+    throw new Error("El servicio de IA no está disponible. Por favor, configura la API Key.");
+  }
+  
   const model = "gemini-2.5-flash";
   
   const prompt = `

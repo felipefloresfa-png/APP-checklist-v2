@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Item } from '../types.js';
-import ItemCompra from './ItemCompra.js';
-import Loader from './Loader.js';
+import { Item } from '../types.ts';
+import ItemCompra from './ItemCompra.tsx';
+import Loader from './Loader.tsx';
 
 interface ListaComprasProps {
     items: Item[];

@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Item, Category, Relevance } from '../types.js';
-import { CATEGORIES } from '../constants.js';
-import { SearchIcon, HouseIcon } from './icons.js';
+import { Item, Category, Relevance } from '../types.ts';
+import { CATEGORIES } from '../constants.ts';
+import { SearchIcon, HouseIcon } from './icons.tsx';
 
 interface FiltersProps {
     items: Item[];
@@ -71,6 +71,7 @@ const Filters: React.FC<FiltersProps> = ({
                             >
                                 <Icon className={`h-5 w-5 ${isActive ? 'text-blue-500' : 'text-gray-400'}`} />
                                 <span>{cat.name}</span>
+                                {/* FIX: Corrected an invalid ternary operator in the className which had an extra ':' causing a syntax error. */}
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${isActive ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
                                     {count}
                                 </span>

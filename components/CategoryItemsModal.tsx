@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Item, Category } from '../types.js';
-import { CATEGORIES } from '../constants.js';
-import { XIcon } from './icons.js';
+import { Item, Category } from '../types.ts';
+import { CATEGORIES } from '../constants.ts';
+import { XIcon } from './icons.tsx';
 
 const CategoryItemsModal: React.FC<{
     category: Category;

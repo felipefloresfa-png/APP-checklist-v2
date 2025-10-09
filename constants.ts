@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Category, Relevance } from './types.js';
+import { Category, Relevance } from './types.ts';
 import { 
     LivingIcon, 
     KitchenIcon, 
@@ -9,7 +9,7 @@ import {
     BathroomIcon, 
     TerraceIcon, 
     OtherIcon 
-} from './components/icons.js';
+} from './components/icons.tsx';
 
 export const CATEGORIES: { id: Category; name: string; icon: React.FC<{className?: string}> }[] = [
     { id: Category.LIVING, name: 'Living', icon: LivingIcon },
