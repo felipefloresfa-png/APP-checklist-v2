@@ -1,12 +1,14 @@
 {
   "version": 2,
-  "rewrites": [
-    { "source": "^/(.+\\.tsx)$", "destination": "/$1" },
-    { "source": "^/(.+\\.ts)$", "destination": "/$1" }
+  "builds": [
+    {
+      "src": "**/*",
+      "use": "@vercel/static"
+    }
   ],
   "headers": [
     {
-      "source": "/.+\\.(ts|tsx)",
+      "source": "/(.*\\.(ts|tsx))",
       "headers": [
         {
           "key": "Content-Type",
