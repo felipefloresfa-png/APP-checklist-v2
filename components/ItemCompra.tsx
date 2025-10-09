@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { Item } from '../types.ts';
+import { Item, Relevance } from '../types.ts';
 import { PencilIcon, TrashIcon, CheckIcon, EllipsisHorizontalIcon } from './icons.tsx';
+import { RELEVANCE_STYLES } from '../constants.ts';
 
 const ProgressCircle: React.FC<{ item: Item, onClick: () => void }> = ({ item, onClick }) => {
     const { completedQuantity, quantity } = item;
@@ -78,4 +79,81 @@ const ItemCompra: React.FC<{
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
+
+    const handleProgressClick = () => {
+        const { completedQuantity, quantity } = item;
+        const newCompletedQuantity = completedQuantity >= quantity ? 0 : completedQuantity + 1;
+        onUpdateCompletion(item.id, newCompletedQuantity);
+    };
+
+    const isCompleted = item.completedQuantity >= item.quantity;
+    const relevanceStyle = RELEVANCE_STYLES[item.relevance];
     
+    const formatCurrency = (value: number) => {
+      return new Intl.NumberFormat('es-CL', { style: 'decimal' }).format(value);
+    };
+
+    return (
+        <div className={`bg-white p-4 rounded-xl shadow-sm flex items-center space-x-4 transition-opacity duration-300 ${isCompleted ? 'opacity-60' : ''}`}>
+            <ProgressCircle item={item} onClick={handleProgressClick} />
+
+            <div className="flex-1 min-w-0">
+                <p className={`font-semibold text-gray-800 truncate ${isCompleted ? 'line-through text-gray-500' : ''}`}>
+                    {item.name}
+                </p>
+                <div className="flex items-center space-x-2 text-sm text-gray-500 mt-1 flex-wrap gap-y-1">
+                    <span>${formatCurrency(item.price * item.quantity)}</span>
+                    <span className="text-gray-300">|</span>
+                    <span>Cant: {item.quantity}</span>
+                    <span className="text-gray-300">|</span>
+                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${relevanceStyle.bg} ${relevanceStyle.text}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${relevanceStyle.dot}`}></span>
+                        {item.relevance}
+                    </span>
+                </div>
+            </div>
+
+            <div className="relative" ref={menuRef}>
+                <button
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="p-2 text-gray-500 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    aria-label="Opciones"
+                >
+                    <EllipsisHorizontalIcon className="h-5 w-5" />
+                </button>
+                {isMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-xl z-10 border border-gray-100">
+                        <ul className="py-1">
+                            <li>
+                                <button
+                                    onClick={() => {
+                                        onStartEdit(item);
+                                        setIsMenuOpen(false);
+                                    }}
+                                    className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                    <PencilIcon className="h-4 w-4 mr-3" />
+                                    Editar
+                                </button>
+                            </li>
+                            <li>
+                                <button
+                                    onClick={() => {
+                                        onDelete(item.id);
+                                        setIsMenuOpen(false);
+                                    }}
+                                    className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                >
+                                    <TrashIcon className="h-4 w-4 mr-3" />
+                                    Eliminar
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default ItemCompra;
