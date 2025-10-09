@@ -1,4 +1,8 @@
 {
+  "rewrites": [
+    { "source": "/(.*\\.tsx)", "destination": "/$1.tsx" },
+    { "source": "/(.*\\.ts)", "destination": "/$1.ts" }
+  ],
   "headers": [
     {
       "source": "/(.*\\.ts)",
