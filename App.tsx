@@ -20,7 +20,7 @@ import CategoryItemsModal from './components/CategoryItemsModal.tsx';
 import EditItemModal from './components/EditItemModal.tsx';
 import ConfirmationModal from './components/ConfirmationModal.tsx';
 
-const App: React.FC = () => {
+function App() {
     const [items, setItems] = React.useState<Item[]>([]);
     const [currentUser, setCurrentUser] = React.useState<User>(User.FELIPE);
     const [loading, setLoading] = React.useState(true);
@@ -375,6 +375,6 @@ const App: React.FC = () => {
             />
         </div>
     );
-};
+}
 
 export default App;
