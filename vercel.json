@@ -1,11 +1,4 @@
 {
-  "framework": null,
-  "builds": [
-    {
-      "src": "**/*",
-      "use": "@vercel/static"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*\\.tsx)",
