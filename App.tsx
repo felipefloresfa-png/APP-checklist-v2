@@ -113,27 +113,22 @@ function App() {
 
                 const itemsData = snapshot.docs.map(doc => {
                     const data = doc.data({ serverTimestamps: 'estimate' });
-                    const {
-                        name, category, relevance, price, quantity,
-                        completedQuantity, completedBy, createdAt, completedAt,
-                        addedBy, deleted, deletedBy, deletedAt
-                    } = data;
-
+                    // FIX: Replaced object destructuring with direct property access to avoid Babel parsing issues.
                     return {
                         id: doc.id,
-                        name: name,
-                        category: category,
-                        relevance: relevance,
-                        price: price,
-                        quantity: quantity,
-                        completedQuantity: completedQuantity || 0,
-                        completedBy: completedBy || null,
-                        createdAt: createdAt?.toDate() || null,
-                        completedAt: completedAt?.toDate() || null,
-                        addedBy: addedBy,
-                        deleted: deleted || false,
-                        deletedBy: deletedBy || null,
-                        deletedAt: deletedAt?.toDate() || null,
+                        name: data.name,
+                        category: data.category,
+                        relevance: data.relevance,
+                        price: data.price,
+                        quantity: data.quantity,
+                        completedQuantity: data.completedQuantity || 0,
+                        completedBy: data.completedBy || null,
+                        createdAt: data.createdAt?.toDate() || null,
+                        completedAt: data.completedAt?.toDate() || null,
+                        addedBy: data.addedBy,
+                        deleted: data.deleted || false,
+                        deletedBy: data.deletedBy || null,
+                        deletedAt: data.deletedAt?.toDate() || null,
                     } as Item;
                 });
                 setItems(itemsData);
