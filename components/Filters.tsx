@@ -27,9 +27,9 @@ const Filters: React.FC<FiltersProps> = ({
     setFilterStatus,
 }) => {
     const categoryCounts = React.useMemo(() => {
-        const counts: { [key in Category | 'all']?: number } = { all: items.length };
+        const counts: { [key in Category | 'all']?: number } = { all: items.filter(i => !i.deleted).length };
         CATEGORIES.forEach(category => {
-            counts[category.id] = items.filter(item => item.category === category.id).length;
+            counts[category.id] = items.filter(item => item.category === category.id && !item.deleted).length;
         });
         return counts;
     }, [items]);
@@ -49,12 +49,14 @@ const Filters: React.FC<FiltersProps> = ({
     const allCategories = [{ id: 'all' as 'all', name: 'Todos', icon: HouseIcon }, ...CATEGORIES];
 
     return (
-        <div className="bg-white p-4 rounded-xl shadow-md space-y-4">
+        <div className="space-y-4">
             {/* Category Tabs */}
             <div className="border-b border-gray-200">
                 <nav className="-mb-px flex space-x-4 overflow-x-auto pb-1" aria-label="Tabs">
                     {allCategories.map(cat => {
                         const count = categoryCounts[cat.id as Category | 'all'] || 0;
+                        if(count === 0 && cat.id !== 'all') return null;
+
                         const isActive = filterCategory === cat.id;
                         const Icon = cat.icon;
 
@@ -71,7 +73,6 @@ const Filters: React.FC<FiltersProps> = ({
                             >
                                 <Icon className={`h-5 w-5 ${isActive ? 'text-blue-500' : 'text-gray-400'}`} />
                                 <span>{cat.name}</span>
-                                {/* FIX: Corrected an invalid ternary operator in the className which had an extra ':' causing a syntax error. */}
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${isActive ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
                                     {count}
                                 </span>

@@ -19,6 +19,7 @@ import ProgresoEspacio from './components/ProgresoEspacio.tsx';
 import CategoryItemsModal from './components/CategoryItemsModal.tsx';
 import EditItemModal from './components/EditItemModal.tsx';
 import ConfirmationModal from './components/ConfirmationModal.tsx';
+import ShareButton from './components/ShareButton.tsx';
 
 function App() {
     const initialItemsState: Item[] = [];
@@ -332,17 +333,21 @@ function App() {
                 
                 <AddItemForm onAddItems={handleAddMultipleItems} currentUser={currentUser} />
                 
-                <Filters 
-                    items={items}
-                    searchTerm={searchTerm}
-                    setSearchTerm={setSearchTerm}
-                    filterCategory={filterCategory}
-                    setFilterCategory={setFilterCategory}
-                    filterRelevance={filterRelevance}
-                    setFilterRelevance={setFilterRelevance}
-                    filterStatus={filterStatus}
-                    setFilterStatus={setFilterStatus}
-                />
+                <div className="bg-white p-4 rounded-xl shadow-md space-y-4">
+                    <Filters 
+                        items={items}
+                        searchTerm={searchTerm}
+                        setSearchTerm={setSearchTerm}
+                        filterCategory={filterCategory}
+                        setFilterCategory={setFilterCategory}
+                        filterRelevance={filterRelevance}
+                        setFilterRelevance={setFilterRelevance}
+                        filterStatus={filterStatus}
+                        setFilterStatus={setFilterStatus}
+                    />
+                    <ShareButton items={items} />
+                </div>
+
 
                 <ListaCompras 
                     items={sortedItems}

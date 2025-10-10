@@ -152,7 +152,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ item, onClose, onSave }) 
                         </div>
                     </div>
                     
-                    <div className={`grid ${formData.completed ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                    <div className={`grid ${formData.completedQuantity > 0 ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
                         <div>
                             <label htmlFor="relevance" className={labelStyle}>
                                 Relevancia
@@ -168,7 +168,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ item, onClose, onSave }) 
                                 {Object.values(Relevance).map(r => <option key={r} value={r}>{r}</option>)}
                             </select>
                         </div>
-                        {formData.completed && (
+                        {formData.completedQuantity > 0 && (
                             <div>
                                 <label htmlFor="completedBy" className={labelStyle}>
                                     Completado por
