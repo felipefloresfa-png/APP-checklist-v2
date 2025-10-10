@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: app-checklist
+    env: static
+    staticPublishPath: ./dist
+    buildCommand: npm run build
+    headers:
+      - path: "/*.tsx"
+        name: Content-Type
+        value: text/javascript
+      - path: "/*.ts"
+        name: Content-Type
+        value: text/javascript
+      - path: "/components/*.tsx"
+        name: Content-Type
+        value: text/javascript
+      - path: "/services/*.ts"
+        name: Content-Type
+        value: text/javascript
