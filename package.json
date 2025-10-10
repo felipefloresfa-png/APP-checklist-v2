@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "rm -rf dist && mkdir dist && cp -r components services *.html *.tsx *.ts *.json dist && printf '/**/*.ts\\n  Content-Type: text/javascript\\n/**/*.tsx\\n  Content-Type: text/javascript' > dist/_headers"
+    "build": "rm -rf dist && mkdir dist && cp -r components services *.html *.tsx *.ts dist && printf '/.ts\\n  Content-Type: text/javascript\\n/*.tsx\\n  Content-Type: text/javascript\\n/components/*.tsx\\n  Content-Type: text/javascript\\n/services/*.ts\\n  Content-Type: text/javascript' > dist/_headers"
   }
 }
