@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "echo \"Build step not required for this project. Static files are served directly.\""
+    "build": "mkdir dist && cp -r components services *.html *.tsx *.ts *.json dist"
   }
 }
