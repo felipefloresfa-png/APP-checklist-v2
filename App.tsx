@@ -2,8 +2,7 @@ import * as React from 'react';
 import { getFirestore, collection, onSnapshot, query, orderBy, doc, setDoc, addDoc, updateDoc, writeBatch, serverTimestamp, getDoc, getDocs, where, deleteField } from 'firebase/firestore';
 
 import { db } from './services/firebase.ts';
-import { getSuggestions } from './services/geminiService.ts';
-import { Item, User, Category, Relevance, SuggestedItem } from './types.ts';
+import { Item, User, Category, Relevance } from './types.ts';
 import { initialItems } from './initialData.ts';
 
 import Header from './components/Header.tsx';
@@ -12,7 +11,6 @@ import AddItemForm from './components/FormularioAgregarItem.tsx';
 import Filters from './components/Filters.tsx';
 import ListaCompras from './components/ListaCompras.tsx';
 import Loader from './components/Loader.tsx';
-import SuggestionsModal from './components/SuggestionsModal.tsx';
 import UserSwitcher from './components/UserSwitcher.tsx';
 import ActividadReciente from './components/ActividadReciente.tsx';
 import ProgresoEspacio from './components/ProgresoEspacio.tsx';
@@ -34,7 +32,6 @@ function App() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [filterStatus, setFilterStatus] = React.useState<'all' | 'pending' | 'completed'>('all');
 
-    const [suggestionsCategory, setSuggestionsCategory] = React.useState<Category | null>(null);
     const [categoryModal, setCategoryModal] = React.useState<Category | null>(null);
     const [editingItem, setEditingItem] = React.useState<Item | null>(null);
     const [deletingItem, setDeletingItem] = React.useState<Item | null>(null);
@@ -207,26 +204,6 @@ function App() {
         }
     };
     
-    const handleAddSuggestedItems = async (suggestedItems: SuggestedItem[]) => {
-        const batch = writeBatch(db);
-        suggestedItems.forEach(item => {
-            const docRef = doc(itemsCollection);
-            batch.set(docRef, {
-                ...item,
-                quantity: 1,
-                completedQuantity: 0,
-                createdAt: serverTimestamp(),
-                addedBy: currentUser,
-            });
-        });
-        try {
-            await batch.commit();
-        } catch (e: any) {
-             console.error("Error adding suggested items: ", e.message);
-             alert('No se pudieron agregar las sugerencias. Por favor, revisa tu conexión e inténtalo de nuevo.');
-        }
-    };
-
     const handleUpdateCompletion = async (id: string, newCompletedQuantity: number) => {
         const itemRef = doc(db, 'items', id);
         const item = items.find(i => i.id === id);
@@ -348,7 +325,6 @@ function App() {
                     onStartEdit={setEditingItem}
                 />
             </main>
-            {suggestionsCategory && <SuggestionsModal category={suggestionsCategory} onClose={() => setSuggestionsCategory(null)} onAddItems={handleAddSuggestedItems} />}
             {categoryModal && (
                 <CategoryItemsModal
                     category={categoryModal}
