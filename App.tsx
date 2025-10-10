@@ -81,7 +81,6 @@ function App() {
             }
         };
 
-
         const seedDatabase = async () => {
             console.log("Colección vacía detectada. Precargando base de datos con ítems iniciales...");
             const batch = writeBatch(db);
@@ -103,17 +102,19 @@ function App() {
             }
         };
 
+        let unsubscribeItems: (() => void) | undefined;
+        let unsubscribeBudget: (() => void) | undefined;
+
         const initializeApp = async () => {
             await runMigration();
 
-            const unsubscribeItems = onSnapshot(query(itemsCollection, orderBy('createdAt', 'desc')), (snapshot) => {
+            unsubscribeItems = onSnapshot(query(itemsCollection, orderBy('createdAt', 'desc')), (snapshot) => {
                 if (loading && snapshot.empty) {
                     seedDatabase();
                 }
 
                 const itemsData = snapshot.docs.map(doc => {
                     const data = doc.data({ serverTimestamps: 'estimate' });
-                    // FIX: Replaced object destructuring with direct property access to avoid Babel parsing issues.
                     return {
                         id: doc.id,
                         name: data.name,
@@ -139,25 +140,20 @@ function App() {
                 setLoading(false);
             });
             
-            const unsubscribeBudget = onSnapshot(metadataDoc, (doc) => {
+            unsubscribeBudget = onSnapshot(metadataDoc, (doc) => {
                 if (doc.exists()) {
                     setTotalBudget(doc.data().value || 5000000);
                 } else {
                     setTotalBudget(5000000);
                 }
             });
-
-            return { unsubscribeItems, unsubscribeBudget };
         };
         
-        let unsubscribers: { unsubscribeItems?: () => void; unsubscribeBudget?: () => void; } = {};
-        initializeApp().then(subs => {
-            unsubscribers = subs;
-        });
+        initializeApp();
 
         return () => {
-            unsubscribers.unsubscribeItems?.();
-            unsubscribers.unsubscribeBudget?.();
+            if (unsubscribeItems) unsubscribeItems();
+            if (unsubscribeBudget) unsubscribeBudget();
         };
     }, []);
 
