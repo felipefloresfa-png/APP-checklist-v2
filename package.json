@@ -1,5 +1,8 @@
 {
   "name": "app-checklist",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "scripts": {
+    "build": "echo \"Build step not required for this project. Static files are served directly.\""
+  }
 }
